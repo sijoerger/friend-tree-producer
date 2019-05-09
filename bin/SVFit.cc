@@ -37,7 +37,49 @@ int main(int argc, char** argv)
   TDirectoryFile* dir = (TDirectoryFile*) in->Get(folder.c_str());
   TTree* inputtree = (TTree*) dir->Get(tree.c_str());
 
-  // Restrict input tree to needed branches TODO
+  // Restrict input tree to needed branches
+  inputtree->SetBranchStatus("*",0);
+
+  // Quantities of first lepton
+  inputtree->SetBranchStatus("pt_1",1);
+  inputtree->SetBranchStatus("eta_1",1);
+  inputtree->SetBranchStatus("phi_1",1);
+  inputtree->SetBranchStatus("m_1",1);
+  inputtree->SetBranchStatus("decayMode_1",1);
+  Float_t pt_1,eta_1,phi_1,m_1,decayMode_1;
+  inputtree->SetBranchAddress("pt_1",&pt_1);
+  inputtree->SetBranchAddress("eta_1",&eta_1);
+  inputtree->SetBranchAddress("phi_1",&phi_1);
+  inputtree->SetBranchAddress("m_1",&m_1);
+  inputtree->SetBranchAddress("decayMode_1",&decayMode_1);
+
+  // Quantities of second lepton
+  inputtree->SetBranchStatus("pt_2",1);
+  inputtree->SetBranchStatus("eta_2",1);
+  inputtree->SetBranchStatus("phi_2",1);
+  inputtree->SetBranchStatus("m_2",1);
+  inputtree->SetBranchStatus("decayMode_2",1);
+  Float_t pt_2,eta_2,phi_2,m_2,decayMode_2;
+  inputtree->SetBranchAddress("pt_2",&pt_2);
+  inputtree->SetBranchAddress("eta_2",&eta_2);
+  inputtree->SetBranchAddress("phi_2",&phi_2);
+  inputtree->SetBranchAddress("m_2",&m_2);
+  inputtree->SetBranchAddress("decayMode_2",&decayMode_2);
+
+  // Quantities of MET
+  inputtree->SetBranchStatus("met",1);
+  inputtree->SetBranchStatus("metcov00",1);
+  inputtree->SetBranchStatus("metcov01",1);
+  inputtree->SetBranchStatus("metcov10",1);
+  inputtree->SetBranchStatus("metcov11",1);
+  inputtree->SetBranchStatus("metphi",1);
+  Float_t met,metcov00,metcov01,metcov10,metcov11,metphi;
+  inputtree->SetBranchAddress("met",&met);
+  inputtree->SetBranchAddress("metcov00",&metcov00);
+  inputtree->SetBranchAddress("metcov01",&metcov01);
+  inputtree->SetBranchAddress("metcov10",&metcov10);
+  inputtree->SetBranchAddress("metcov11",&metcov11);
+  inputtree->SetBranchAddress("metphi",&metphi);
 
   // Create output tree
   TTree* svfitfriend = new TTree("ntuple","svfit friend tree");
@@ -88,16 +130,8 @@ int main(int argc, char** argv)
 
   int verbosity = 1;
   ClassicSVfit svFitAlgo(verbosity);
-#ifdef USE_SVFITTF
-  //HadTauTFCrystalBall2* hadTauTF = new HadTauTFCrystalBall2();
-  //svFitAlgo.setHadTauTF(hadTauTF);
-  //svFitAlgo.enableHadTauTF();
-#endif
 
-  //svFitAlgo.addLogM_fixed(false);
   svFitAlgo.addLogM_fixed(true, 6.);
-  //svFitAlgo.addLogM_dynamic(true, "(m/1000.)*15.");
-  //svFitAlgo.setMaxObjFunctionCalls(100000); // CV: default is 100000 evaluations of integrand per event
   svFitAlgo.setLikelihoodFileName("testClassicSVfit.root");
 
   svFitAlgo.integrate(measuredTauLeptons, measuredMETx, measuredMETy, covMET);
@@ -114,10 +148,6 @@ int main(int argc, char** argv)
   } else {
     std::cout << "sorry, failed to find valid solution !!" << std::endl;
   }
-  if (std::abs((mass - 115.746) / 115.746) > 0.001) return 1;
-  if (std::abs((massErr - 92.5252) / 92.5252) > 0.001) return 1;
-  if (std::abs((transverseMass - 114.242) / 114.242) > 0.001) return 1;
-  if (std::abs((transverseMassErr - 91.2066) / 91.2066) > 0.001) return 1;
   
   // re-run with mass constraint
   double massContraint = 125.06;
@@ -137,10 +167,6 @@ int main(int argc, char** argv)
   } else {
     std::cout << "sorry, failed to find valid solution !!" << std::endl;
   }
-  if (std::abs((mass - 124.646) / 124.646) > 0.001) return 1;
-  if (std::abs((massErr - 1.23027) / 1.23027) > 0.001) return 1;
-  if (std::abs((transverseMass - 123.026) / 123.026) > 0.001) return 1;
-  if (std::abs((transverseMassErr - 1.1574) / 1.1574) > 0.001) return 1;
   
   // re-run with classic_svFit::TauTauHistogramAdapter
   std::cout << "\n\nTesting integration with classic_svFit::TauTauHistogramAdapter" << std::endl;
@@ -159,8 +185,6 @@ int main(int argc, char** argv)
   } else {
     std::cout << "sorry, failed to find valid solution !!" << std::endl;
   }
-  if (std::abs((tau1P4.Pt() - 102.508) / 102.508) > 0.001) return 1;
-  if (std::abs((tau2P4.Pt() - 27.019) / 27.019) > 0.001) return 1;
 
   //Run FastMTT
   FastMTT aFastMTTAlgo;
@@ -172,12 +196,14 @@ int main(int argc, char** argv)
 	    <<std::endl;
   std::cout<<"Real Time =   "<<aFastMTTAlgo.getRealTime("scan")<<" seconds "
 	   <<" Cpu Time =   "<<aFastMTTAlgo.getCpuTime("scan")<<" seconds"<<std::endl;
-  if(std::abs(ttP4.M() -  108.991)>1E-6*108.991) return 1;
 
   // Initialize output
-  std::string outputname = "friend.root" //TODO create name from input,folder,first_entry,last_entry
-  TFile* out = TFile::Open(outputname.c_str(), "write");
+  std::string outputname = "friend.root"; //TODO create name from input,folder,first_entry,last_entry
+  TFile* out = TFile::Open(outputname.c_str(), "recreate");
   out->mkdir(folder.c_str());
-  
+  out->cd(folder.c_str());
+  svfitfriend->Write();
+  out->Close();
+
   return 0;
 }
