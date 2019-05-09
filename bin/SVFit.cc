@@ -4,6 +4,7 @@
 #include "TauAnalysis/ClassicSVfit/interface/FastMTT.h"
 
 #include "TH1F.h"
+#include "TVector2.h"
 
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/program_options.hpp"
@@ -20,7 +21,7 @@ int main(int argc, char** argv)
   std::string folder = "mt_nominal";
   std::string tree = "ntuple";
   unsigned int first_entry = 0;
-  unsigned int last_entry = 99;
+  unsigned int last_entry = 9;
   po::variables_map vm;
   po::options_description config("configuration");
   config.add_options()
@@ -46,7 +47,8 @@ int main(int argc, char** argv)
   inputtree->SetBranchStatus("phi_1",1);
   inputtree->SetBranchStatus("m_1",1);
   inputtree->SetBranchStatus("decayMode_1",1);
-  Float_t pt_1,eta_1,phi_1,m_1,decayMode_1;
+  Float_t pt_1,eta_1,phi_1,m_1;
+  Int_t decayMode_1;
   inputtree->SetBranchAddress("pt_1",&pt_1);
   inputtree->SetBranchAddress("eta_1",&eta_1);
   inputtree->SetBranchAddress("phi_1",&phi_1);
@@ -59,7 +61,8 @@ int main(int argc, char** argv)
   inputtree->SetBranchStatus("phi_2",1);
   inputtree->SetBranchStatus("m_2",1);
   inputtree->SetBranchStatus("decayMode_2",1);
-  Float_t pt_2,eta_2,phi_2,m_2,decayMode_2;
+  Float_t pt_2,eta_2,phi_2,m_2;
+  Int_t decayMode_2;
   inputtree->SetBranchAddress("pt_2",&pt_2);
   inputtree->SetBranchAddress("eta_2",&eta_2);
   inputtree->SetBranchAddress("phi_2",&phi_2);
@@ -81,6 +84,12 @@ int main(int argc, char** argv)
   inputtree->SetBranchAddress("metcov11",&metcov11);
   inputtree->SetBranchAddress("metphi",&metphi);
 
+  // Initialize output file
+  std::string outputname = "happytreefriend.root"; //TODO create name from input,folder,first_entry,last_entry
+  TFile* out = TFile::Open(outputname.c_str(), "recreate");
+  out->mkdir(folder.c_str());
+  out->cd(folder.c_str());
+
   // Create output tree
   TTree* svfitfriend = new TTree("ntuple","svfit friend tree");
 
@@ -98,112 +107,77 @@ int main(int argc, char** argv)
   svfitfriend->Branch("phi_fastmtt",&phi_fastmtt,"phi_fastmtt/F");
   svfitfriend->Branch("m_fastmtt",&m_fastmtt,"m_fastmtt/F");
 
-  // Initialize SVFit settings TODO
+  // Initialize SVFit settings TODO make through functions deriving them from folder name;
+  float kappa_parameter = 4.0; // fully-leptonic: 3.0, semi-leptonic: 4.0; fully-hadronic: 5.0
+  float default_float = -10.0;
+
+  // Initialize ClassicSVFit
+  ClassicSVfit svFitAlgo(0);
+  svFitAlgo.addLogM_fixed(true, kappa_parameter);
+
+  // Initialize FastMTT
+  FastMTT aFastMTTAlgo;
 
   // Loop over desired events of the input tree & compute outputs TODO
   for(unsigned int i=first_entry; i <= last_entry; i++)
   {
         std::cout << "Entry: " << i << std::endl;
         inputtree->GetEntry(i);
+
+        // define MET;
+        TVector2 metVec;
+        metVec.SetMagPhi(met,metphi);
+
+        // define MET covariance
+        TMatrixD covMET(2, 2);
+        covMET[0][0] = metcov00;
+        covMET[1][0] = metcov10;
+        covMET[0][1] = metcov01;
+        covMET[1][1] = metcov11;
+
+        // define lepton four vectors
+        std::vector<MeasuredTauLepton> measuredTauLeptons;
+        measuredTauLeptons.push_back(MeasuredTauLepton(MeasuredTauLepton::kTauToMuDecay, pt_1, eta_1, phi_1, m_1)); // tau -> muon decay (Pt, eta, phi, mass)
+        measuredTauLeptons.push_back(MeasuredTauLepton(MeasuredTauLepton::kTauToHadDecay,  pt_2, eta_2, phi_2, m_2, decayMode_2)); // tau -> hadronic decay (Pt, eta, phi, mass)
+
+        /*
+           tauDecayModes:  0 one-prong without neutral pions
+                           1 one-prong with neutral pions
+              10 three-prong without neutral pions
+        */
+
+        // Run ClassicSVFit
+        svFitAlgo.integrate(measuredTauLeptons, metVec.X(), metVec.Y(), covMET);
+        bool isValidSolution = svFitAlgo.isValidSolution();
+
+        if ( isValidSolution ) {
+            pt_sv = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getPt();
+            eta_sv = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getEta();
+            phi_sv = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getPhi();
+            m_sv = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getMass();
+        } else {
+            pt_sv = default_float;
+            eta_sv = default_float;
+            phi_sv = default_float;
+            m_sv = default_float;
+        }
+
+        // Run FastMTT
+        aFastMTTAlgo.run(measuredTauLeptons,  metVec.X(), metVec.Y(), covMET);
+        LorentzVector ttP4 = aFastMTTAlgo.getBestP4();
+        pt_fastmtt = ttP4.Pt();
+        eta_fastmtt = ttP4.Eta();
+        phi_fastmtt = ttP4.Phi();
+        m_fastmtt = ttP4.M();
+
+        // Fill output tree
+        svfitfriend->Fill();
   }
 
-  // define MET
-  double measuredMETx =  11.7491;
-  double measuredMETy = -51.9172;
-
-  // define MET covariance
-  TMatrixD covMET(2, 2);
-  covMET[0][0] =  787.352;
-  covMET[1][0] = -178.63;
-  covMET[0][1] = -178.63;
-  covMET[1][1] =  179.545;
-
-  // define lepton four vectors
-  std::vector<MeasuredTauLepton> measuredTauLeptons;
-  measuredTauLeptons.push_back(MeasuredTauLepton(MeasuredTauLepton::kTauToElecDecay, 33.7393, 0.9409,  -0.541458, 0.51100e-3)); // tau -> electron decay (Pt, eta, phi, mass)
-  measuredTauLeptons.push_back(MeasuredTauLepton(MeasuredTauLepton::kTauToHadDecay,  25.7322, 0.618228, 2.79362,  0.13957, 0)); // tau -> 1prong0pi0 hadronic decay (Pt, eta, phi, mass)
-  /*
-     tauDecayModes:  0 one-prong without neutral pions
-                     1 one-prong with neutral pions
-        10 three-prong without neutral pions
-  */
-
-  int verbosity = 1;
-  ClassicSVfit svFitAlgo(verbosity);
-
-  svFitAlgo.addLogM_fixed(true, 6.);
-  svFitAlgo.setLikelihoodFileName("testClassicSVfit.root");
-
-  svFitAlgo.integrate(measuredTauLeptons, measuredMETx, measuredMETy, covMET);
-  bool isValidSolution = svFitAlgo.isValidSolution();
-
-  double mass = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getMass();
-  double massErr = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getMassErr();
-  double transverseMass = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getTransverseMass();
-  double transverseMassErr = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getTransverseMassErr();
-
-  if ( isValidSolution ) {
-    std::cout << "found valid solution: mass = " << mass << " +/- " << massErr << " (expected value = 115.746 +/- 92.5252),"
-              << " transverse mass = " << transverseMass << " +/- " << transverseMassErr << " (expected value = 114.242 +/- 91.2066)" << std::endl;
-  } else {
-    std::cout << "sorry, failed to find valid solution !!" << std::endl;
-  }
-  
-  // re-run with mass constraint
-  double massContraint = 125.06;
-  std::cout << "\n\nTesting integration with di tau mass constraint set to " << massContraint << std::endl;
-  svFitAlgo.setLikelihoodFileName("testClassicSVfit_withMassContraint.root");
-  svFitAlgo.setDiTauMassConstraint(massContraint);
-  svFitAlgo.integrate(measuredTauLeptons, measuredMETx, measuredMETy, covMET);
-  isValidSolution = svFitAlgo.isValidSolution();
-  mass = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getMass();
-  massErr = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getMassErr();
-  transverseMass = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getTransverseMass();
-  transverseMassErr = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getTransverseMassErr();
-
-  if ( isValidSolution ) {
-    std::cout << "found valid solution: mass = " << mass << " +/- " << massErr << " (expected value = 124.646 +/- 1.23027),"
-              << " transverse mass = " << transverseMass << " +/- " << transverseMassErr << " (expected value = 123.026 +/- 1.1574)" << std::endl;
-  } else {
-    std::cout << "sorry, failed to find valid solution !!" << std::endl;
-  }
-  
-  // re-run with classic_svFit::TauTauHistogramAdapter
-  std::cout << "\n\nTesting integration with classic_svFit::TauTauHistogramAdapter" << std::endl;
-  ClassicSVfit svFitAlgo2(verbosity);
-  svFitAlgo2.setHistogramAdapter(new classic_svFit::TauTauHistogramAdapter());
-  svFitAlgo2.addLogM_fixed(true, 6.);
-  svFitAlgo2.setLikelihoodFileName("testClassicSVfit_TauTauHistogramAdapter.root");
-  svFitAlgo2.integrate(measuredTauLeptons, measuredMETx, measuredMETy, covMET);
-  isValidSolution = svFitAlgo2.isValidSolution();
-  classic_svFit::LorentzVector tau1P4 = static_cast<classic_svFit::TauTauHistogramAdapter*>(svFitAlgo2.getHistogramAdapter())->GetFittedTau1LV();
-  classic_svFit::LorentzVector tau2P4 = static_cast<classic_svFit::TauTauHistogramAdapter*>(svFitAlgo2.getHistogramAdapter())->GetFittedTau2LV();
-
-  if ( isValidSolution ) {
-    std::cout << "found valid solution: pT(tau1) = " << tau1P4.Pt() << " (expected value = 102.508),"
-              << "                      pT(tau2) = " << tau2P4.Pt() << " (expected value = 27.019)" << std::endl;
-  } else {
-    std::cout << "sorry, failed to find valid solution !!" << std::endl;
-  }
-
-  //Run FastMTT
-  FastMTT aFastMTTAlgo;
-  aFastMTTAlgo.run(measuredTauLeptons, measuredMETx, measuredMETy, covMET);
-  LorentzVector ttP4 = aFastMTTAlgo.getBestP4();
-  std::cout<<std::endl;
-  std::cout << "FastMTT found best p4 with mass = " << ttP4.M()
-	    << " (expected value = 108.991),"
-	    <<std::endl;
-  std::cout<<"Real Time =   "<<aFastMTTAlgo.getRealTime("scan")<<" seconds "
-	   <<" Cpu Time =   "<<aFastMTTAlgo.getCpuTime("scan")<<" seconds"<<std::endl;
-
-  // Initialize output
-  std::string outputname = "friend.root"; //TODO create name from input,folder,first_entry,last_entry
-  TFile* out = TFile::Open(outputname.c_str(), "recreate");
-  out->mkdir(folder.c_str());
-  out->cd(folder.c_str());
-  svfitfriend->Write();
+  // Fill output file
+  svfitfriend->Write("",TObject::kOverwrite);
   out->Close();
+  in->Close();
 
   return 0;
 }
