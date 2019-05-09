@@ -6,6 +6,7 @@
 #include "TH1F.h"
 #include "TVector2.h"
 
+#include <boost/algorithm/string.hpp>
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/program_options.hpp"
 #include "boost/lexical_cast.hpp"
@@ -14,6 +15,36 @@
 using namespace classic_svFit;
 using boost::starts_with;
 namespace po = boost::program_options;
+
+std::string folder_to_channel(std::string foldername)
+{
+    std::vector<std::string> foldername_split;
+    boost::split(foldername_split,foldername, [](char c){return c == '_';});
+    return foldername_split.at(0);
+}
+
+float folder_to_kappa_parameter(std::string foldername)
+{
+    std::string channel = folder_to_channel(foldername);
+    if(channel == "em")      return 3.0;
+    else if(channel == "et") return 4.0;
+    else if(channel == "mt") return 4.0;
+    else if(channel == "tt") return 5.0;
+    else {std::cout << "Channel determined in a wrong way. Exiting"; exit(1);}
+    return -1.0;
+}
+
+std::pair<MeasuredTauLepton::kDecayType,MeasuredTauLepton::kDecayType> folder_to_ditaudecay(std::string foldername)
+{
+    std::string channel = folder_to_channel(foldername);
+    if(channel == "em")      return std::make_pair(MeasuredTauLepton::kTauToElecDecay,MeasuredTauLepton::kTauToMuDecay);
+    else if(channel == "et") return std::make_pair(MeasuredTauLepton::kTauToElecDecay,MeasuredTauLepton::kTauToHadDecay);
+    else if(channel == "mt") return std::make_pair(MeasuredTauLepton::kTauToMuDecay,MeasuredTauLepton::kTauToHadDecay);
+    else if(channel == "tt") return std::make_pair(MeasuredTauLepton::kTauToHadDecay,MeasuredTauLepton::kTauToHadDecay);
+    else {std::cout << "Channel determined in a wrong way. Exiting"; exit(1);}
+    return std::make_pair(MeasuredTauLepton::kUndefinedDecayType,MeasuredTauLepton::kUndefinedDecayType);
+}
+
 
 int main(int argc, char** argv)
 {
@@ -107,8 +138,10 @@ int main(int argc, char** argv)
   svfitfriend->Branch("phi_fastmtt",&phi_fastmtt,"phi_fastmtt/F");
   svfitfriend->Branch("m_fastmtt",&m_fastmtt,"m_fastmtt/F");
 
-  // Initialize SVFit settings TODO make through functions deriving them from folder name;
-  float kappa_parameter = 4.0; // fully-leptonic: 3.0, semi-leptonic: 4.0; fully-hadronic: 5.0
+  // Initialize SVFit settings
+  float kappa_parameter = folder_to_kappa_parameter(folder); // fully-leptonic: 3.0, semi-leptonic: 4.0; fully-hadronic: 5.0
+  std::pair<MeasuredTauLepton::kDecayType,MeasuredTauLepton::kDecayType> ditaudecay = folder_to_ditaudecay(folder);
+
   float default_float = -10.0;
 
   // Initialize ClassicSVFit
@@ -118,7 +151,7 @@ int main(int argc, char** argv)
   // Initialize FastMTT
   FastMTT aFastMTTAlgo;
 
-  // Loop over desired events of the input tree & compute outputs TODO
+  // Loop over desired events of the input tree & compute outputs
   for(unsigned int i=first_entry; i <= last_entry; i++)
   {
         std::cout << "Entry: " << i << std::endl;
@@ -137,8 +170,8 @@ int main(int argc, char** argv)
 
         // define lepton four vectors
         std::vector<MeasuredTauLepton> measuredTauLeptons;
-        measuredTauLeptons.push_back(MeasuredTauLepton(MeasuredTauLepton::kTauToMuDecay, pt_1, eta_1, phi_1, m_1)); // tau -> muon decay (Pt, eta, phi, mass)
-        measuredTauLeptons.push_back(MeasuredTauLepton(MeasuredTauLepton::kTauToHadDecay,  pt_2, eta_2, phi_2, m_2, decayMode_2)); // tau -> hadronic decay (Pt, eta, phi, mass)
+        measuredTauLeptons.push_back(MeasuredTauLepton(ditaudecay.first, pt_1, eta_1, phi_1, m_1, decayMode_1 >= 0 ? decayMode_1 : -1));
+        measuredTauLeptons.push_back(MeasuredTauLepton(ditaudecay.second,  pt_2, eta_2, phi_2, m_2, decayMode_2 >= 0 ? decayMode_2 : -1));
 
         /*
            tauDecayModes:  0 one-prong without neutral pions
