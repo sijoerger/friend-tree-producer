@@ -7,10 +7,10 @@
 #include "TVector2.h"
 
 #include <boost/algorithm/string.hpp>
-#include "boost/algorithm/string/predicate.hpp"
-#include "boost/program_options.hpp"
-#include "boost/lexical_cast.hpp"
-#include "boost/regex.hpp"
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/program_options.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/regex.hpp>
 
 using namespace classic_svFit;
 using boost::starts_with;
@@ -45,6 +45,15 @@ std::pair<MeasuredTauLepton::kDecayType,MeasuredTauLepton::kDecayType> folder_to
     return std::make_pair(MeasuredTauLepton::kUndefinedDecayType,MeasuredTauLepton::kUndefinedDecayType);
 }
 
+std::string outputname_from_settings(std::string input, std::string folder, unsigned int first_entry, unsigned int last_entry)
+{
+    std::vector<std::string> path_split;
+    boost::split(path_split,input, [](char c){return c == '/';});
+    std::string filename = path_split.at(path_split.size() - 1);
+    boost::replace_all(filename, ".root", "");
+    std::string outputname = filename + "_" + folder + "_" + std::to_string(first_entry) + "_" + std::to_string(last_entry) + ".root";
+    return outputname;
+}
 
 int main(int argc, char** argv)
 {
@@ -116,7 +125,7 @@ int main(int argc, char** argv)
   inputtree->SetBranchAddress("metphi",&metphi);
 
   // Initialize output file
-  std::string outputname = "happytreefriend.root"; //TODO create name from input,folder,first_entry,last_entry
+  std::string outputname = outputname_from_settings(input,folder,first_entry,last_entry);
   TFile* out = TFile::Open(outputname.c_str(), "recreate");
   out->mkdir(folder.c_str());
   out->cd(folder.c_str());
@@ -154,7 +163,6 @@ int main(int argc, char** argv)
   // Loop over desired events of the input tree & compute outputs
   for(unsigned int i=first_entry; i <= last_entry; i++)
   {
-        std::cout << "Entry: " << i << std::endl;
         inputtree->GetEntry(i);
 
         // define MET;
