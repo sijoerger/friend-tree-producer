@@ -17,12 +17,30 @@ namespace po = boost::program_options;
 int main(int argc, char** argv)
 {
   std::string input = "output.root";
+  std::string folder = "mt_nominal";
+  std::string tree = "ntuple";
+  unsigned int first_entry = 0;
+  unsigned int last_entry = 100;
   po::variables_map vm;
   po::options_description config("configuration");
   config.add_options()
-    ("input", po::value<std::string>(&input)->default_value(input));
+    ("input", po::value<std::string>(&input)->default_value(input))
+    ("folder", po::value<std::string>(&folder)->default_value(folder))
+    ("tree", po::value<std::string>(&tree)->default_value(tree))
+    ("first_entry", po::value<unsigned int>(&first_entry)->default_value(first_entry))
+    ("last_entry", po::value<unsigned int>(&last_entry)->default_value(last_entry));
   po::store(po::command_line_parser(argc, argv).options(config).run(), vm);
   po::notify(vm);
+
+  // Acess input file and initialize output
+  TFile* in = TFile::Open(input.c_str(), "read");
+  in->cd(folder.c_str());
+  TTree* inputtree = (TTree*)(in->Get(tree.c_str()));
+  for(unsigned int i=first_entry; i <= last_entry; i++)
+  {
+        std::cout << "Entry: " << i << std::endl;
+        inputtree->GetEntry(i);
+  }
 
   // define MET
   double measuredMETx =  11.7491;
