@@ -20,7 +20,7 @@ int main(int argc, char** argv)
   std::string folder = "mt_nominal";
   std::string tree = "ntuple";
   unsigned int first_entry = 0;
-  unsigned int last_entry = 100;
+  unsigned int last_entry = 99;
   po::variables_map vm;
   po::options_description config("configuration");
   config.add_options()
@@ -32,10 +32,33 @@ int main(int argc, char** argv)
   po::store(po::command_line_parser(argc, argv).options(config).run(), vm);
   po::notify(vm);
 
-  // Acess input file and initialize output
+  // Access input file and tree
   TFile* in = TFile::Open(input.c_str(), "read");
-  in->cd(folder.c_str());
-  TTree* inputtree = (TTree*)(in->Get(tree.c_str()));
+  TDirectoryFile* dir = (TDirectoryFile*) in->Get(folder.c_str());
+  TTree* inputtree = (TTree*) dir->Get(tree.c_str());
+
+  // Restrict input tree to needed branches TODO
+
+  // Create output tree
+  TTree* svfitfriend = new TTree("ntuple","svfit friend tree");
+
+  // ClassicSVFit outputs
+  Float_t pt_sv,eta_sv,phi_sv,m_sv;
+  svfitfriend->Branch("pt_sv",&pt_sv,"pt_sv/F");
+  svfitfriend->Branch("eta_sv",&eta_sv,"eta_sv/F");
+  svfitfriend->Branch("phi_sv",&phi_sv,"phi_sv/F");
+  svfitfriend->Branch("m_sv",&m_sv,"m_sv/F");
+
+  // FastMTT outputs
+  Float_t pt_fastmtt,eta_fastmtt,phi_fastmtt,m_fastmtt;
+  svfitfriend->Branch("pt_fastmtt",&pt_fastmtt,"pt_fastmtt/F");
+  svfitfriend->Branch("eta_fastmtt",&eta_fastmtt,"eta_fastmtt/F");
+  svfitfriend->Branch("phi_fastmtt",&phi_fastmtt,"phi_fastmtt/F");
+  svfitfriend->Branch("m_fastmtt",&m_fastmtt,"m_fastmtt/F");
+
+  // Initialize SVFit settings TODO
+
+  // Loop over desired events of the input tree & compute outputs TODO
   for(unsigned int i=first_entry; i <= last_entry; i++)
   {
         std::cout << "Entry: " << i << std::endl;
@@ -150,6 +173,11 @@ int main(int argc, char** argv)
   std::cout<<"Real Time =   "<<aFastMTTAlgo.getRealTime("scan")<<" seconds "
 	   <<" Cpu Time =   "<<aFastMTTAlgo.getCpuTime("scan")<<" seconds"<<std::endl;
   if(std::abs(ttP4.M() -  108.991)>1E-6*108.991) return 1;
+
+  // Initialize output
+  std::string outputname = "friend.root" //TODO create name from input,folder,first_entry,last_entry
+  TFile* out = TFile::Open(outputname.c_str(), "write");
+  out->mkdir(folder.c_str());
   
   return 0;
 }
