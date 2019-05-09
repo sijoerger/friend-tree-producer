@@ -1,0 +1,10 @@
+<bin   file="SVFit.cc" name="SVFit">
+  <use name="TauAnalysis/ClassicSVfit"/>
+  <use name="TauAnalysis/SVfitTF"/>
+  <use name="root"/>
+  <use name="boost_program_options"/>
+  <use name="boost_filesystem"/>
+  <use name="boost_python"/>
+  <use name="boost_regex"/>
+  <Flags CPPDEFINES="USE_SVFITTF"/>
+</bin>
