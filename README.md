@@ -15,7 +15,7 @@ folder with corresponding entry in the [BuildFile.xml](https://github.com/KIT-CM
 whereas the `python` executables should be placed into the [scripts](https://github.com/KIT-CMS/friend-tree-producer/tree/master/scripts) folder.
 After compilation within CMSSW, these executables should be accessible within the command line.
 
-A common set of command line options should be used for these executables in order to process them equally throught the batch system job management.
+A common set of command line options should be used for these executables in order to process them equally through the batch system job management.
 This set of command line options should be:
 
  * `--input`: path to the input ntuple to be used
