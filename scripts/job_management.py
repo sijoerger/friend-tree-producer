@@ -68,6 +68,7 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, 
     executable_path = os.path.join(workdir_path,"condor_"+executable+".sh")
     condorjdl_path = os.path.join(workdir_path,"condor_"+executable+".jdl")
     jobdb_path = os.path.join(workdir_path,"condor_"+executable+".json")
+    datasetdb_path = os.path.join(workdir_path,"dataset.json")
     with open(executable_path,"w") as shellscript:
         shellscript.write(shellscript_content)
         os.chmod(executable_path, os.stat(executable_path).st_mode | stat.S_IEXEC)
@@ -89,10 +90,33 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, 
     with open(jobdb_path,"w") as db:
         db.write(json.dumps(job_database, sort_keys=True, indent=2))
         db.close()
-    
+    with open(datasetdb_path,"w") as datasets:
+        datasets.write(json.dumps(ntuple_database, sort_keys=True, indent=2))
+        datasets.close()
 
-def collect_outputs():
-    pass
+def collect_outputs(executable):
+    workdir_path = os.path.join(os.environ["CMSSW_BASE"],"src",executable+"_workdir")
+    jobdb_path = os.path.join(workdir_path,"condor_"+executable+".json")
+    datasetdb_path = os.path.join(workdir_path,"dataset.json")
+    jobdb_file = open(jobdb_path,"r")
+    jobdb = json.loads(jobdb_file.read())
+    datasetdb_file = open(datasetdb_path,"r")
+    datasetdb = json.loads(datasetdb_file.read())
+    for jobnumber in sorted([int(k) for k in jobdb]):
+        nick = os.path.basename(jobdb[str(jobnumber)]["input"]).strip(".root")
+        pipeline = jobdb[str(jobnumber)]["folder"]
+        tree = jobdb[str(jobnumber)]["tree"]
+        first = jobdb[str(jobnumber)]["first_entry"]
+        last = jobdb[str(jobnumber)]["last_entry"]
+        filename = "_".join([nick,pipeline,str(first),str(last)])+".root"
+        filepath = os.path.join(workdir_path,nick,filename)
+        datasetdb[nick].setdefault(pipeline,r.TChain("/".join([pipeline,tree]))).Add(filepath)
+    outputfile = r.TFile.Open(os.path.join(workdir_path,nick+".root"),"recreate")
+    for p in datasetdb[nick]["pipelines"]:
+        outputfile.mkdir(p)
+        outputfile.cd(p)
+        tree = datasetdb[nick][p].CopyTree("")
+        tree.Write("",r.TObject.kOverwrite)
 
 def main():
     parser = argparse.ArgumentParser(description='Script to manage condor batch system jobs for the executables and their outputs.')
@@ -108,7 +132,7 @@ def main():
     if args.command == "submit":
         prepare_jobs(input_ntuples_list, args.events_per_job, args.batch_cluster, args.executable, args.walltime)
     elif args.command == "collect":
-        collect_outputs(executable)
+        collect_outputs(args.executable)
 
 if __name__ == "__main__":
     main()
