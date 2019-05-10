@@ -94,7 +94,7 @@ def collect_outputs():
 def main():
     parser = argparse.ArgumentParser(description='Script to manage condor batch system jobs for the executables and their outputs.')
     parser.add_argument('--executable',required=True, help='Executable to be used for friend tree creation ob the batch system.')
-    parser.add_argument('--batch_cluster',required=True, choices=['naf'], help='Batch system cluster to be used.')
+    parser.add_argument('--batch_cluster',required=True, choices=['naf','etp'], help='Batch system cluster to be used.')
     parser.add_argument('--command',required=True, choices=['submit','collect'], help='Command to be done by the job manager.')
     parser.add_argument('--input_ntuples_directory',required=True, help='Batch system cluster to be used.')
     parser.add_argument('--events_per_job',required=True, type=int, help='Event to be processed by each job')
