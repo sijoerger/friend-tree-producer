@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import numpy as np
+import stat
 
 shellscript_template = '''#!/bin/sh
 ulimit -s unlimited
@@ -69,6 +70,7 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable):
     jobdb_path = os.path.join(workdir_path,"condor_"+executable+".json")
     with open(executable_path,"w") as shellscript:
         shellscript.write(shellscript_content)
+        os.chmod(executable_path, os.stat(executable_path).st_mode | stat.S_IEXEC)
         shellscript.close()
     condorjdl_template_path = os.path.join(os.environ["CMSSW_BASE"],"src/HiggsAnalysis/friend-tree-producer/data/submit_condor_%s.jdl"%batch_cluster)
     condorjdl_template_file = open(condorjdl_template_path,"r")
