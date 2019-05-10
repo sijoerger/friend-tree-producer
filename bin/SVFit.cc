@@ -11,6 +11,7 @@
 #include <boost/program_options.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/regex.hpp>
+#include <boost/filesystem.hpp>
 
 using namespace classic_svFit;
 using boost::starts_with;
@@ -45,13 +46,19 @@ std::pair<MeasuredTauLepton::kDecayType,MeasuredTauLepton::kDecayType> folder_to
     return std::make_pair(MeasuredTauLepton::kUndefinedDecayType,MeasuredTauLepton::kUndefinedDecayType);
 }
 
-std::string outputname_from_settings(std::string input, std::string folder, unsigned int first_entry, unsigned int last_entry)
+std::string filename_from_inputpath(std::string input)
 {
     std::vector<std::string> path_split;
     boost::split(path_split,input, [](char c){return c == '/';});
     std::string filename = path_split.at(path_split.size() - 1);
     boost::replace_all(filename, ".root", "");
-    std::string outputname = filename + "_" + folder + "_" + std::to_string(first_entry) + "_" + std::to_string(last_entry) + ".root";
+    return filename;
+}
+
+std::string outputname_from_settings(std::string input, std::string folder, unsigned int first_entry, unsigned int last_entry)
+{
+    std::string filename = filename_from_inputpath(input);
+    std::string outputname = filename + "/" + filename + "_" + folder + "_" + std::to_string(first_entry) + "_" + std::to_string(last_entry) + ".root";
     return outputname;
 }
 
@@ -126,6 +133,7 @@ int main(int argc, char** argv)
 
   // Initialize output file
   std::string outputname = outputname_from_settings(input,folder,first_entry,last_entry);
+  boost::filesystem::create_directories(filename_from_inputpath(input));
   TFile* out = TFile::Open(outputname.c_str(), "recreate");
   out->mkdir(folder.c_str());
   out->cd(folder.c_str());
