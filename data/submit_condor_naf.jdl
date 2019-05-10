@@ -1,0 +1,9 @@
+executable = {EXECUTABLE}
+arguments = $(ProcId)
+output                = {TASKDIR}/logging/$(ClusterId).$(ProcId).out
+error                 = {TASKDIR}/logging/$(ClusterId).$(ProcId).err
+log                   = {TASKDIR}/logging/$(ClusterId).log
+getenv                = true
+on_exit_hold = (ExitBySignal == True) || (ExitCode != 0)
+periodic_release =  (NumJobStarts < 3) && ((CurrentTime - EnteredCurrentStatus) > 600)
+queue {NJOBS}
