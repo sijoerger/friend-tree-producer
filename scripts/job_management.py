@@ -24,7 +24,7 @@ if [ $1 -eq {JOBNUMBER} ]; then
 fi
 '''
 
-def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable):
+def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, walltime):
     ntuple_database = {}
     for f in input_ntuples_list:
         nick = os.path.basename(f).strip(".root")
@@ -76,7 +76,10 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable):
     condorjdl_template_file = open(condorjdl_template_path,"r")
     condorjdl_template = condorjdl_template_file.read()
     njobs = str(job_number)
-    condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs)
+    if (not walltime < 0) and batch_cluster == "etp":
+        condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(walltime))
+    else:
+        condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs)
     with open(condorjdl_path,"w") as condorjdl:
         condorjdl.write(condorjdl_content)
         condorjdl.close()
@@ -98,11 +101,12 @@ def main():
     parser.add_argument('--command',required=True, choices=['submit','collect'], help='Command to be done by the job manager.')
     parser.add_argument('--input_ntuples_directory',required=True, help='Batch system cluster to be used.')
     parser.add_argument('--events_per_job',required=True, type=int, help='Event to be processed by each job')
+    parser.add_argument('--walltime',default=-1, type=int, help='Walltime to be set for the job (in seconds). If negative, then it will not be set. [Default: %(default)s]')
     args = parser.parse_args()
 
     input_ntuples_list = glob.glob(os.path.join(args.input_ntuples_directory,"*","*.root"))
     if args.command == "submit":
-        prepare_jobs(input_ntuples_list, args.events_per_job, args.batch_cluster, args.executable)
+        prepare_jobs(input_ntuples_list, args.events_per_job, args.batch_cluster, args.executable, args.walltime)
     elif args.command == "collect":
         collect_outputs(executable)
 
