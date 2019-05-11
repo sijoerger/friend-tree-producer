@@ -123,7 +123,7 @@ def main():
     parser.add_argument('--executable',required=True, choices=['SVFit'], help='Executable to be used for friend tree creation ob the batch system.')
     parser.add_argument('--batch_cluster',required=True, choices=['naf','etp'], help='Batch system cluster to be used.')
     parser.add_argument('--command',required=True, choices=['submit','collect'], help='Command to be done by the job manager.')
-    parser.add_argument('--input_ntuples_directory',required=True, help='Batch system cluster to be used.')
+    parser.add_argument('--input_ntuples_directory',required=True, help='Directory where the input files can be found. The file structure in the directory should match */*.root wildcard.')
     parser.add_argument('--events_per_job',required=True, type=int, help='Event to be processed by each job')
     parser.add_argument('--walltime',default=-1, type=int, help='Walltime to be set for the job (in seconds). If negative, then it will not be set. [Default: %(default)s]')
     args = parser.parse_args()
