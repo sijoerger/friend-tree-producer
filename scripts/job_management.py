@@ -7,6 +7,7 @@ import json
 import os
 import numpy as np
 import stat
+from multiprocessing import Pool
 
 shellscript_template = '''#!/bin/sh
 ulimit -s unlimited
@@ -23,6 +24,22 @@ if [ $1 -eq {JOBNUMBER} ]; then
     {COMMAND}
 fi
 '''
+
+def write_trees_to_files(info):
+    nick = info[0]
+    collection_path = info[1]
+    db = info[2]
+    print "Copying trees for %s"%nick
+    nick_path = os.path.join(collection_path,nick)
+    if not os.path.exists(nick_path):
+        os.mkdir(nick_path)
+    outputfile = r.TFile.Open(os.path.join(nick_path,nick+".root"),"recreate")
+    for p in db[nick]["pipelines"]:
+        outputfile.mkdir(p)
+        outputfile.cd(p)
+        tree = db[nick][p].CopyTree("")
+        tree.Write("",r.TObject.kOverwrite)
+    outputfile.Close()
 
 def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, walltime):
     ntuple_database = {}
@@ -94,7 +111,7 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, 
         datasets.write(json.dumps(ntuple_database, sort_keys=True, indent=2))
         datasets.close()
 
-def collect_outputs(executable):
+def collect_outputs(executable,cores):
     workdir_path = os.path.join(os.environ["CMSSW_BASE"],"src",executable+"_workdir")
     jobdb_path = os.path.join(workdir_path,"condor_"+executable+".json")
     datasetdb_path = os.path.join(workdir_path,"dataset.json")
@@ -103,6 +120,8 @@ def collect_outputs(executable):
     datasetdb_file = open(datasetdb_path,"r")
     datasetdb = json.loads(datasetdb_file.read())
     collection_path = os.path.join(workdir_path,executable+"_collected")
+    if not os.path.exists(collection_path):
+        os.mkdir(collection_path)
     for jobnumber in sorted([int(k) for k in jobdb]):
         nick = os.path.basename(jobdb[str(jobnumber)]["input"]).strip(".root")
         pipeline = jobdb[str(jobnumber)]["folder"]
@@ -112,13 +131,10 @@ def collect_outputs(executable):
         filename = "_".join([nick,pipeline,str(first),str(last)])+".root"
         filepath = os.path.join(workdir_path,nick,filename)
         datasetdb[nick].setdefault(pipeline,r.TChain("/".join([pipeline,tree]))).Add(filepath)
-        nick_path = os.path.join(collection_path,nick)
-        outputfile = r.TFile.Open(os.path.join(nick_path,nick+".root"),"recreate")
-        for p in datasetdb[nick]["pipelines"]:
-            outputfile.mkdir(p)
-            outputfile.cd(p)
-            tree = datasetdb[nick][p].CopyTree("")
-            tree.Write("",r.TObject.kOverwrite)
+
+    nicks = sorted(datasetdb)
+    pool = Pool(cores)
+    pool.map(write_trees_to_files, zip(nicks,[collection_path]*len(nicks), [datasetdb]*len(nicks)))
 
 def main():
     parser = argparse.ArgumentParser(description='Script to manage condor batch system jobs for the executables and their outputs.')
@@ -128,13 +144,14 @@ def main():
     parser.add_argument('--input_ntuples_directory',required=True, help='Directory where the input files can be found. The file structure in the directory should match */*.root wildcard.')
     parser.add_argument('--events_per_job',required=True, type=int, help='Event to be processed by each job')
     parser.add_argument('--walltime',default=-1, type=int, help='Walltime to be set for the job (in seconds). If negative, then it will not be set. [Default: %(default)s]')
+    parser.add_argument('--cores',default=5, type=int, help='Number of cores to be used for the collect command. [Default: %(default)s]')
     args = parser.parse_args()
 
     input_ntuples_list = glob.glob(os.path.join(args.input_ntuples_directory,"*","*.root"))
     if args.command == "submit":
         prepare_jobs(input_ntuples_list, args.events_per_job, args.batch_cluster, args.executable, args.walltime)
     elif args.command == "collect":
-        collect_outputs(args.executable)
+        collect_outputs(args.executable, args.cores)
 
 if __name__ == "__main__":
     main()
