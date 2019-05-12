@@ -111,7 +111,7 @@ def collect_outputs(executable):
         filename = "_".join([nick,pipeline,str(first),str(last)])+".root"
         filepath = os.path.join(workdir_path,nick,filename)
         datasetdb[nick].setdefault(pipeline,r.TChain("/".join([pipeline,tree]))).Add(filepath)
-    outputfile = r.TFile.Open(os.path.join(workdir_path,nick+".root"),"recreate")
+    outputfile = r.TFile.Open(os.path.join(workdir_path,executable+"_collected",nick,nick+".root"),"recreate")
     for p in datasetdb[nick]["pipelines"]:
         outputfile.mkdir(p)
         outputfile.cd(p)
