@@ -102,6 +102,7 @@ def collect_outputs(executable):
     jobdb = json.loads(jobdb_file.read())
     datasetdb_file = open(datasetdb_path,"r")
     datasetdb = json.loads(datasetdb_file.read())
+    collection_path = os.path.join(workdir_path,executable+"_collected")
     for jobnumber in sorted([int(k) for k in jobdb]):
         nick = os.path.basename(jobdb[str(jobnumber)]["input"]).strip(".root")
         pipeline = jobdb[str(jobnumber)]["folder"]
@@ -111,12 +112,13 @@ def collect_outputs(executable):
         filename = "_".join([nick,pipeline,str(first),str(last)])+".root"
         filepath = os.path.join(workdir_path,nick,filename)
         datasetdb[nick].setdefault(pipeline,r.TChain("/".join([pipeline,tree]))).Add(filepath)
-    outputfile = r.TFile.Open(os.path.join(workdir_path,executable+"_collected",nick,nick+".root"),"recreate")
-    for p in datasetdb[nick]["pipelines"]:
-        outputfile.mkdir(p)
-        outputfile.cd(p)
-        tree = datasetdb[nick][p].CopyTree("")
-        tree.Write("",r.TObject.kOverwrite)
+        nick_path = os.path.join(collection_path,nick)
+        outputfile = r.TFile.Open(os.path.join(nick_path,nick+".root"),"recreate")
+        for p in datasetdb[nick]["pipelines"]:
+            outputfile.mkdir(p)
+            outputfile.cd(p)
+            tree = datasetdb[nick][p].CopyTree("")
+            tree.Write("",r.TObject.kOverwrite)
 
 def main():
     parser = argparse.ArgumentParser(description='Script to manage condor batch system jobs for the executables and their outputs.')
