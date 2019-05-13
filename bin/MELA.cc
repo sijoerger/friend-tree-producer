@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
 
   // Quantities of first lepton
   Float_t pt_1, eta_1, phi_1, m_1;
-  Int_t q_1, q_2;
+  float q_1, q_2;
   inputtree->SetBranchAddress("pt_1", &pt_1);
   inputtree->SetBranchAddress("eta_1", &eta_1);
   inputtree->SetBranchAddress("phi_1", &phi_1);
@@ -108,12 +108,13 @@ int main(int argc, char **argv) {
   out->cd(folder.c_str());
 
   // Create output tree
-  TTree *melafriend = new TTree("ntuple", "MELA friend tree");
+  auto melafriend = new TTree("ntuple", "MELA friend tree");
 
   // MELA outputs
-  Float_t ME_vbf, ME_z2j;
+  float ME_vbf;
   melafriend->Branch("ME_vbf", &ME_vbf, "ME_vbf/F");
-  melafriend->Branch("ME_z2j", &ME_z2j, "ME_z2j/F");
+  // float ME_z2j;
+  //melafriend->Branch("ME_z2j", &ME_z2j, "ME_z2j/F");
 
   // Set up MELA
   const int erg_tev = 13;
@@ -130,7 +131,7 @@ int main(int argc, char **argv) {
     // Fill defaults for events without two jets
     if (njets < 2) {
       ME_vbf= default_float;
-      ME_z2j= default_float;
+      //ME_z2j= default_float;
       melafriend->Fill();
       continue;
     }
@@ -169,14 +170,19 @@ int main(int argc, char **argv) {
     mela.computeProdP(ME_vbf, false);
 
     // Hypothesis: Z + 2 jets
+    // Following hypothesis fails due to following error:
+    // MYLHE format not implemented for    634894960
+    /*
     mela.setProcess(TVar::bkgZJets, TVar::MCFM, TVar::JJQCD);
     mela.computeProdP(ME_z2j, false);
+    */
 
     // Fill output tree
     melafriend->Fill();
   }
 
   // Fill output file
+  out->cd(folder.c_str());
   melafriend->Write("", TObject::kOverwrite);
   out->Close();
   in->Close();
