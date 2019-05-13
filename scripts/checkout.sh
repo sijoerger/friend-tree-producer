@@ -2,6 +2,7 @@
 
 
 ### Setup of CMSSW release
+NUM_CORES=10
 CMSSW=CMSSW_10_2_14
 
 if [ "$1" == "" ]; then
@@ -27,7 +28,16 @@ eval `scramv1 runtime -sh`
 git clone https://github.com/SVfit/ClassicSVfit TauAnalysis/ClassicSVfit -b fastMTT_19_02_2019
 git clone https://github.com/SVfit/SVfitTF TauAnalysis/SVfitTF
 
-# TODO MELA
+# MELA
+git clone https://github.com/cms-analysis/HiggsAnalysis-ZZMatrixElement ZZMatrixElement -b v2.2.0
+# NOTE: The following two lines should be needed following the wiki, but it
+# seems to work either way. However, these lines introduce a dependency on AFS.
+# Wiki: https://twiki.cern.ch/twiki/bin/view/CMS/MELAProject#Checkout_instructions
+#cp ZZMatrixElement/MELA/data/mcfm.xml ../config/toolbox/$SCRAM_ARCH/tools/selected/
+#scram setup mcfm
+cd ZZMatrixElement/
+bash setup.sh -j $NUM_CORES
+cd ..
 
 # TODO NN mass
 
@@ -43,6 +53,5 @@ git clone https://github.com/SVfit/SVfitTF TauAnalysis/SVfitTF
 git clone https://github.com/KIT-CMS/friend-tree-producer.git HiggsAnalysis/friend-tree-producer
 
 ### Compiling under CMSSW
-CORES=10
-scram b -j $CORES
+scram b -j $NUM_CORES
 popd
