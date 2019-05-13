@@ -94,8 +94,18 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, 
     condorjdl_template_file = open(condorjdl_template_path,"r")
     condorjdl_template = condorjdl_template_file.read()
     njobs = str(job_number)
-    if (not walltime < 0) and batch_cluster == "etp":
-        condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(walltime))
+    if batch_cluster == "etp":
+        if walltime > 0:
+            condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(walltime))
+        else:
+            print "Warning: walltime for % cluster not set. Setting it to 1h."%batch_cluster
+            condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(3600))
+    elif batch_cluster == "lxplus":
+        if walltime > 0:
+            condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(walltime))
+        else:
+            print "Warning: walltime for % cluster not set. Setting it to 1h."%batch_cluster
+            condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(3600))
     else:
         condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs)
     with open(condorjdl_path,"w") as condorjdl:
@@ -139,7 +149,7 @@ def collect_outputs(executable,cores):
 def main():
     parser = argparse.ArgumentParser(description='Script to manage condor batch system jobs for the executables and their outputs.')
     parser.add_argument('--executable',required=True, choices=['SVFit', 'MELA'], help='Executable to be used for friend tree creation ob the batch system.')
-    parser.add_argument('--batch_cluster',required=True, choices=['naf','etp'], help='Batch system cluster to be used.')
+    parser.add_argument('--batch_cluster',required=True, choices=['naf','etp', 'lxplus'], help='Batch system cluster to be used.')
     parser.add_argument('--command',required=True, choices=['submit','collect'], help='Command to be done by the job manager.')
     parser.add_argument('--input_ntuples_directory',required=True, help='Directory where the input files can be found. The file structure in the directory should match */*.root wildcard.')
     parser.add_argument('--events_per_job',required=True, type=int, help='Event to be processed by each job')
