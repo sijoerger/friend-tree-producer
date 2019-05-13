@@ -111,10 +111,9 @@ int main(int argc, char **argv) {
   TTree *melafriend = new TTree("ntuple", "MELA friend tree");
 
   // MELA outputs
-  Float_t melaD0minus, ME_sm_VBF, ME_bkg1;
-  melafriend->Branch("melaD0minus", &melaD0minus, "melaD0minus/F");
-  melafriend->Branch("ME_sm_VBF", &ME_sm_VBF, "ME_sm_VBF/F");
-  melafriend->Branch("ME_bkg1", &ME_bkg1, "ME_bkg1/F");
+  Float_t ME_vbf, ME_z2j;
+  melafriend->Branch("ME_vbf", &ME_vbf, "ME_vbf/F");
+  melafriend->Branch("ME_z2j", &ME_z2j, "ME_z2j/F");
 
   // Set up MELA
   const int erg_tev = 13;
@@ -130,9 +129,8 @@ int main(int argc, char **argv) {
 
     // Fill defaults for events without two jets
     if (njets < 2) {
-      melaD0minus = default_float;
-      ME_sm_VBF = default_float;
-      ME_bkg1 = default_float;
+      ME_vbf= default_float;
+      ME_z2j= default_float;
       melafriend->Fill();
       continue;
     }
@@ -147,7 +145,7 @@ int main(int argc, char **argv) {
     tau1.SetPtEtaPhiM(pt_1, eta_1, phi_1, m_1);
     tau2.SetPtEtaPhiM(pt_2, eta_2, phi_2, m_2);
 
-    // NOTE: TODO: Why do we not use the jet mass here?
+    // FIXME: TODO: Why do we not use the jet mass here?
     TLorentzVector jet1, jet2;
     jet1.SetPtEtaPhiM(jpt_1, jeta_1, jphi_1, 0);
     jet2.SetPtEtaPhiM(jpt_2, jeta_2, jphi_2, 0);
@@ -163,12 +161,16 @@ int main(int argc, char **argv) {
 
     mela.resetInputEvent();
     mela.setCandidateDecayMode(TVar::CandidateDecay_ff);
-    mela.setProcess(TVar::HSMHiggs, TVar::JHUGen, TVar::JJVBF);
     mela.setInputEvent(&daughters, &associated, (SimpleParticleCollection_t *)0,
                        false);
-    mela.computeProdP(ME_sm_VBF, false);
+
+    // Hypothesis: SM Higgs
+    mela.setProcess(TVar::HSMHiggs, TVar::JHUGen, TVar::JJVBF);
+    mela.computeProdP(ME_vbf, false);
+
+    // Hypothesis: Z + 2 jets
     mela.setProcess(TVar::bkgZJets, TVar::MCFM, TVar::JJQCD);
-    mela.computeProdP(ME_bkg1, false);
+    mela.computeProdP(ME_z2j, false);
 
     // Fill output tree
     melafriend->Fill();
