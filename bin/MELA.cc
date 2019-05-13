@@ -111,10 +111,19 @@ int main(int argc, char **argv) {
   auto melafriend = new TTree("ntuple", "MELA friend tree");
 
   // MELA outputs
-  float ME_vbf;
+  float ME_vbf, ME_q2v1, ME_q2v2, ME_costheta1, ME_costheta2, ME_phi, ME_costhetastar, ME_phi1;
   melafriend->Branch("ME_vbf", &ME_vbf, "ME_vbf/F");
-  // float ME_z2j;
-  //melafriend->Branch("ME_z2j", &ME_z2j, "ME_z2j/F");
+  melafriend->Branch("ME_q2v1", &ME_q2v1, "ME_q2v1/F");
+  melafriend->Branch("ME_q2v2", &ME_q2v2, "ME_q2v2/F");
+  melafriend->Branch("ME_costheta1", &ME_costheta1, "ME_costheta1/F");
+  melafriend->Branch("ME_costheta2", &ME_costheta2, "ME_costheta2/F");
+  melafriend->Branch("ME_phi", &ME_phi, "ME_phi/F");
+  melafriend->Branch("ME_costhetastar", &ME_costhetastar, "ME_costhetastar/F");
+  melafriend->Branch("ME_phi1", &ME_phi1, "ME_phi1/F");
+  float ME_z2j_1, ME_z2j_2, ME_D;
+  melafriend->Branch("ME_z2j_1", &ME_z2j_1, "ME_z2j_1/F");
+  melafriend->Branch("ME_z2j_2", &ME_z2j_2, "ME_z2j_2/F");
+  melafriend->Branch("ME_D", &ME_D, "ME_D/F");
 
   // Set up MELA
   const int erg_tev = 13;
@@ -131,7 +140,17 @@ int main(int argc, char **argv) {
     // Fill defaults for events without two jets
     if (njets < 2) {
       ME_vbf= default_float;
-      //ME_z2j= default_float;
+      ME_q2v1 = default_float;
+      ME_q2v2 = default_float;
+      ME_costheta1 = default_float;
+      ME_costheta2 = default_float;
+      ME_phi = default_float;
+      ME_costhetastar = default_float;
+      ME_phi1 = default_float;
+      ME_z2j_1 = default_float;
+      ME_z2j_2 = default_float;
+      ME_D = default_float;
+
       melafriend->Fill();
       continue;
     }
@@ -160,22 +179,30 @@ int main(int argc, char **argv) {
     associated.push_back(SimpleParticle_t(0, jet1));
     associated.push_back(SimpleParticle_t(0, jet2));
 
+    SimpleParticleCollection_t associated2;
+    associated2.push_back(SimpleParticle_t(0, jet2));
+    associated2.push_back(SimpleParticle_t(0, jet1));
+
     mela.resetInputEvent();
     mela.setCandidateDecayMode(TVar::CandidateDecay_ff);
-    mela.setInputEvent(&daughters, &associated, (SimpleParticleCollection_t *)0,
-                       false);
+    mela.setInputEvent(&daughters, &associated, (SimpleParticleCollection_t *)0, false);
 
     // Hypothesis: SM Higgs
     mela.setProcess(TVar::HSMHiggs, TVar::JHUGen, TVar::JJVBF);
     mela.computeProdP(ME_vbf, false);
+    mela.computeVBFAngles(ME_q2v1, ME_q2v2, ME_costheta1, ME_costheta2, ME_phi, ME_costhetastar, ME_phi1);
 
     // Hypothesis: Z + 2 jets
-    // Following hypothesis fails due to following error:
-    // MYLHE format not implemented for    634894960
-    /*
+    // Compute the Hypothesis with flipped jets and sum them up for the discriminator.
     mela.setProcess(TVar::bkgZJets, TVar::MCFM, TVar::JJQCD);
-    mela.computeProdP(ME_z2j, false);
-    */
+    mela.computeProdP(ME_z2j_1, false);
+
+    mela.resetInputEvent();
+    mela.setInputEvent(&daughters, &associated2, (SimpleParticleCollection_t *)0, false);
+    mela.computeProdP(ME_z2j_2, false);
+
+    // Compute discriminator
+    ME_D = ME_vbf / (ME_vbf + ME_z2j_1 + ME_z2j_2);
 
     // Fill output tree
     melafriend->Fill();
