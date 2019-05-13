@@ -27,7 +27,8 @@ eval `scramv1 runtime -sh`
 git clone https://github.com/SVfit/ClassicSVfit TauAnalysis/ClassicSVfit -b fastMTT_19_02_2019
 git clone https://github.com/SVfit/SVfitTF TauAnalysis/SVfitTF
 
-# TODO MELA
+# MELA
+git clone https://github.com/cms-analysis/HiggsAnalysis-ZZMatrixElement HiggsAnalysis/ZZMatrixElement -b v2.2.0
 
 # TODO NN mass
 
