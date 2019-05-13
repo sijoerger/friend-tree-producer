@@ -28,7 +28,7 @@ git clone https://github.com/SVfit/ClassicSVfit TauAnalysis/ClassicSVfit -b fast
 git clone https://github.com/SVfit/SVfitTF TauAnalysis/SVfitTF
 
 # MELA
-git clone https://github.com/cms-analysis/HiggsAnalysis-ZZMatrixElement HiggsAnalysis/ZZMatrixElement -b v2.2.0
+git clone https://github.com/cms-analysis/HiggsAnalysis-ZZMatrixElement ZZMatrixElement -b v2.2.0
 
 # TODO NN mass
 
