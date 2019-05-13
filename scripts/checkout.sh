@@ -29,6 +29,8 @@ git clone https://github.com/SVfit/SVfitTF TauAnalysis/SVfitTF
 
 # MELA
 git clone https://github.com/cms-analysis/HiggsAnalysis-ZZMatrixElement ZZMatrixElement -b v2.2.0
+cp ZZMatrixElement/MELA/data/mcfm.xml ../config/toolbox/$SCRAM_ARCH/tools/selected/
+scram setup mcfm
 
 # TODO NN mass
 
