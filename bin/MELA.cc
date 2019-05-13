@@ -68,30 +68,36 @@ int main(int argc, char **argv) {
 
   // Quantities of first lepton
   Float_t pt_1, eta_1, phi_1, m_1;
-  Int_t decayMode_1;
+  Int_t q_1, q_2;
   inputtree->SetBranchAddress("pt_1", &pt_1);
   inputtree->SetBranchAddress("eta_1", &eta_1);
   inputtree->SetBranchAddress("phi_1", &phi_1);
   inputtree->SetBranchAddress("m_1", &m_1);
-  inputtree->SetBranchAddress("decayMode_1", &decayMode_1);
+  inputtree->SetBranchAddress("q_1", &q_1);
 
   // Quantities of second lepton
   Float_t pt_2, eta_2, phi_2, m_2;
-  Int_t decayMode_2;
   inputtree->SetBranchAddress("pt_2", &pt_2);
   inputtree->SetBranchAddress("eta_2", &eta_2);
   inputtree->SetBranchAddress("phi_2", &phi_2);
   inputtree->SetBranchAddress("m_2", &m_2);
-  inputtree->SetBranchAddress("decayMode_2", &decayMode_2);
+  inputtree->SetBranchAddress("q_2", &q_2);
 
-  // Quantities of MET
-  Float_t met, metcov00, metcov01, metcov10, metcov11, metphi;
-  inputtree->SetBranchAddress("met", &met);
-  inputtree->SetBranchAddress("metcov00", &metcov00);
-  inputtree->SetBranchAddress("metcov01", &metcov01);
-  inputtree->SetBranchAddress("metcov10", &metcov10);
-  inputtree->SetBranchAddress("metcov11", &metcov11);
-  inputtree->SetBranchAddress("metphi", &metphi);
+  // Quantities of first jet
+  Float_t jpt_1, jeta_1, jphi_1, jm_1;
+  int njets;
+  inputtree->SetBranchAddress("njets", &njets);
+  inputtree->SetBranchAddress("jpt_1", &jpt_1);
+  inputtree->SetBranchAddress("jeta_1", &jeta_1);
+  inputtree->SetBranchAddress("jphi_1", &jphi_1);
+  inputtree->SetBranchAddress("jm_1", &jm_1);
+
+  // Quantities of second jet
+  Float_t jpt_2, jeta_2, jphi_2, jm_2;
+  inputtree->SetBranchAddress("jpt_2", &jpt_2);
+  inputtree->SetBranchAddress("jeta_2", &jeta_2);
+  inputtree->SetBranchAddress("jphi_2", &jphi_2);
+  inputtree->SetBranchAddress("jm_2", &jm_2);
 
   // Initialize output file
   auto outputname =
@@ -105,21 +111,64 @@ int main(int argc, char **argv) {
   TTree *melafriend = new TTree("ntuple", "MELA friend tree");
 
   // MELA outputs
-  Float_t pt_sv, eta_sv, phi_sv, m_sv;
-  melafriend->Branch("pt_sv", &pt_sv, "pt_sv/F");
-  melafriend->Branch("eta_sv", &eta_sv, "eta_sv/F");
-  melafriend->Branch("phi_sv", &phi_sv, "phi_sv/F");
-  melafriend->Branch("m_sv", &m_sv, "m_sv/F");
+  Float_t melaD0minus, ME_sm_VBF, ME_bkg1;
+  melafriend->Branch("melaD0minus", &melaD0minus, "melaD0minus/F");
+  melafriend->Branch("ME_sm_VBF", &ME_sm_VBF, "ME_sm_VBF/F");
+  melafriend->Branch("ME_bkg1", &ME_bkg1, "ME_bkg1/F");
 
   // Set up MELA
-  const auto default_float = -10.f;
+  const int erg_tev = 13;
+  const float mPOLE = 125.6;
+  TVar::VerbosityLevel verbosity = TVar::SILENT;
+  Mela mela(erg_tev, mPOLE, verbosity);
 
   // Loop over desired events of the input tree & compute outputs
+  const auto default_float = -10.f;
   for (unsigned int i = first_entry; i <= last_entry; i++) {
     // Get entry
     inputtree->GetEntry(i);
 
+    // Fill defaults for events without two jets
+    if (njets < 2) {
+      melaD0minus = default_float;
+      ME_sm_VBF = default_float;
+      ME_bkg1 = default_float;
+      melafriend->Fill();
+      continue;
+    }
+
+    // Sanitize charge for application on same-sign events
+    if (q_1 * q_2 > 0) {
+      q_2 = -q_1;
+    }
+
+    // Build four-vectors
+    TLorentzVector tau1, tau2;
+    tau1.SetPtEtaPhiM(pt_1, eta_1, phi_1, m_1);
+    tau2.SetPtEtaPhiM(pt_2, eta_2, phi_2, m_2);
+
+    // NOTE: TODO: Why do we not use the jet mass here?
+    TLorentzVector jet1, jet2;
+    jet1.SetPtEtaPhiM(jpt_1, jeta_1, jphi_1, 0);
+    jet2.SetPtEtaPhiM(jpt_2, jeta_2, jphi_2, 0);
+
     // Run MELA
+    SimpleParticleCollection_t daughters;
+    daughters.push_back(SimpleParticle_t(15 * q_1, tau1));
+    daughters.push_back(SimpleParticle_t(15 * q_2, tau2));
+
+    SimpleParticleCollection_t associated;
+    associated.push_back(SimpleParticle_t(0, jet1));
+    associated.push_back(SimpleParticle_t(0, jet2));
+
+    mela.resetInputEvent();
+    mela.setCandidateDecayMode(TVar::CandidateDecay_ff);
+    mela.setProcess(TVar::HSMHiggs, TVar::JHUGen, TVar::JJVBF);
+    mela.setInputEvent(&daughters, &associated, (SimpleParticleCollection_t *)0,
+                       false);
+    mela.computeProdP(ME_sm_VBF, false);
+    mela.setProcess(TVar::bkgZJets, TVar::MCFM, TVar::JJQCD);
+    mela.computeProdP(ME_bkg1, false);
 
     // Fill output tree
     melafriend->Fill();
