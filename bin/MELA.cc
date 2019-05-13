@@ -111,8 +111,15 @@ int main(int argc, char **argv) {
   auto melafriend = new TTree("ntuple", "MELA friend tree");
 
   // MELA outputs
-  float ME_vbf;
+  float ME_vbf, ME_q2v1, ME_q2v2, ME_costheta1, ME_costheta2, ME_phi, ME_costhetastar, ME_phi1;
   melafriend->Branch("ME_vbf", &ME_vbf, "ME_vbf/F");
+  melafriend->Branch("ME_q2v1", &ME_q2v1, "ME_q2v1/F");
+  melafriend->Branch("ME_q2v2", &ME_q2v2, "ME_q2v2/F");
+  melafriend->Branch("ME_costheta1", &ME_costheta1, "ME_costheta1/F");
+  melafriend->Branch("ME_costheta2", &ME_costheta2, "ME_costheta2/F");
+  melafriend->Branch("ME_phi", &ME_phi, "ME_phi/F");
+  melafriend->Branch("ME_costhetastar", &ME_costhetastar, "ME_costhetastar/F");
+  melafriend->Branch("ME_phi1", &ME_phi1, "ME_phi1/F");
   // float ME_z2j;
   //melafriend->Branch("ME_z2j", &ME_z2j, "ME_z2j/F");
 
@@ -131,6 +138,13 @@ int main(int argc, char **argv) {
     // Fill defaults for events without two jets
     if (njets < 2) {
       ME_vbf= default_float;
+      ME_q2v1 = default_float;
+      ME_q2v2 = default_float;
+      ME_costheta1 = default_float;
+      ME_costheta2 = default_float;
+      ME_phi = default_float;
+      ME_costhetastar = default_float;
+      ME_phi1 = default_float;
       //ME_z2j= default_float;
       melafriend->Fill();
       continue;
@@ -168,6 +182,7 @@ int main(int argc, char **argv) {
     // Hypothesis: SM Higgs
     mela.setProcess(TVar::HSMHiggs, TVar::JHUGen, TVar::JJVBF);
     mela.computeProdP(ME_vbf, false);
+    mela.computeVBFAngles(ME_q2v1, ME_q2v2, ME_costheta1, ME_costheta2, ME_phi, ME_costhetastar, ME_phi1);
 
     // Hypothesis: Z + 2 jets
     // Following hypothesis fails due to following error:
