@@ -14,4 +14,5 @@
   <use name="boost_filesystem"/>
   <use name="boost_python"/>
   <use name="boost_regex"/>
+  <Flags LDFLAGS="ZZMatrixElement/MELA/data/slc6_amd64_gcc700/libmcfm_706.so"/>
 </bin>
