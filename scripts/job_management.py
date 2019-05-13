@@ -138,7 +138,7 @@ def collect_outputs(executable,cores):
 
 def main():
     parser = argparse.ArgumentParser(description='Script to manage condor batch system jobs for the executables and their outputs.')
-    parser.add_argument('--executable',required=True, choices=['SVFit'], help='Executable to be used for friend tree creation ob the batch system.')
+    parser.add_argument('--executable',required=True, choices=['SVFit', 'MELA'], help='Executable to be used for friend tree creation ob the batch system.')
     parser.add_argument('--batch_cluster',required=True, choices=['naf','etp'], help='Batch system cluster to be used.')
     parser.add_argument('--command',required=True, choices=['submit','collect'], help='Command to be done by the job manager.')
     parser.add_argument('--input_ntuples_directory',required=True, help='Directory where the input files can be found. The file structure in the directory should match */*.root wildcard.')
