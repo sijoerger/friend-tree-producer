@@ -1,4 +1,4 @@
-#include "lwtnn/LightweightNeuralNetwork.hh"
+#include "lwtnn/LightweightGraph.hh"
 #include "lwtnn/parse_json.hh"
 #include <fstream>
 
@@ -125,8 +125,9 @@ int main(int argc, char **argv) {
       throw std::runtime_error("LWTNN config file does not exist.");
   }
   std::ifstream config_file(lwtnn_config);
-  auto nnconfig = lwt::parse_json(config_file);
-  lwt::LightweightNeuralNetwork model(nnconfig.inputs, nnconfig.layers, nnconfig.outputs);
+  auto nnconfig = lwt::parse_json_graph(config_file);
+  lwt::LightweightGraph model(nnconfig, "out_0");
+    std::map<std::string, std::map<std::string, double> > inputs;
 
   // Loop over desired events of the input tree & compute outputs
   typedef ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiM4D<double> > PtEtaPhiMVector;
@@ -141,17 +142,16 @@ int main(int argc, char **argv) {
     PtEtaPhiMVector recmet(met, 0.0, metphi, 0.0);
 
     // Fill input map
-    std::map<std::string, double> inputs;
-    inputs["t1_rec_px"] = rectau1.Px();
-    inputs["t1_rec_py"] = rectau1.Py();
-    inputs["t1_rec_pz"] = rectau1.Pz();
-    inputs["t1_rec_e"] = rectau1.E();
-    inputs["t2_rec_px"] = rectau2.Px();
-    inputs["t2_rec_py"] = rectau2.Py();
-    inputs["t2_rec_pz"] = rectau2.Pz();
-    inputs["t2_rec_e"] = rectau2.E();
-    inputs["met_rec_px"] = recmet.Px();
-    inputs["met_rec_py"] = recmet.Py();
+    inputs["in_0"]["t1_rec_px"] = rectau1.Px();
+    inputs["in_0"]["t1_rec_py"] = rectau1.Py();
+    inputs["in_0"]["t1_rec_pz"] = rectau1.Pz();
+    inputs["in_0"]["t1_rec_e"] = rectau1.E();
+    inputs["in_0"]["t2_rec_px"] = rectau2.Px();
+    inputs["in_0"]["t2_rec_py"] = rectau2.Py();
+    inputs["in_0"]["t2_rec_pz"] = rectau2.Pz();
+    inputs["in_0"]["t2_rec_e"] = rectau2.E();
+    inputs["in_0"]["met_rec_px"] = recmet.Px();
+    inputs["in_0"]["met_rec_py"] = recmet.Py();
 
     // Run computation
     auto outputs = model.compute(inputs);
