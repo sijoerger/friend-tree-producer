@@ -112,7 +112,7 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, 
             if walltime > 0:
                 condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(walltime))
             else:
-                print "Warning: walltime for % cluster not set. Setting it to 1h."%batch_cluster
+                print "Warning: walltime for %s cluster not set. Setting it to 1h."%batch_cluster
                 condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(3600))
         else:
             condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs)
