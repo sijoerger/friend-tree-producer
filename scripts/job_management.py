@@ -41,7 +41,7 @@ def write_trees_to_files(info):
         tree.Write("",r.TObject.kOverwrite)
     outputfile.Close()
 
-def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, walltime):
+def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch):
     ntuple_database = {}
     for f in input_ntuples_list:
         nick = os.path.basename(f).strip(".root")
@@ -57,18 +57,21 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, 
     for nick in ntuple_database:
         for p in ntuple_database[nick]["pipelines"]:
             n_entries = ntuple_database[nick]["pipelines"][p]
-            entry_list = np.append(np.arange(0,n_entries,events_per_job),[n_entries -1])
-            first_entries = entry_list[:-1]
-            last_entries = entry_list[1:] -1
-            last_entries[-1] += 1
-            for first,last in zip(first_entries, last_entries):
-                job_database[job_number] = {}
-                job_database[job_number]["input"] = ntuple_database[nick]["path"]
-                job_database[job_number]["folder"] = p
-                job_database[job_number]["tree"] = "ntuple"
-                job_database[job_number]["first_entry"] = first
-                job_database[job_number]["last_entry"] = last
-                job_number +=1
+            if n_entries > 0:
+                entry_list = np.append(np.arange(0,n_entries,events_per_job),[n_entries -1])
+                first_entries = entry_list[:-1]
+                last_entries = entry_list[1:] -1
+                last_entries[-1] += 1
+                for first,last in zip(first_entries, last_entries):
+                    job_database[job_number] = {}
+                    job_database[job_number]["input"] = ntuple_database[nick]["path"]
+                    job_database[job_number]["folder"] = p
+                    job_database[job_number]["tree"] = "ntuple"
+                    job_database[job_number]["first_entry"] = first
+                    job_database[job_number]["last_entry"] = last
+                    job_number +=1
+            else:
+                print "Warning: %s has no entries in pipeline %s"%(nick,p)
     workdir_path = os.path.join(os.environ["CMSSW_BASE"],"src",executable+"_workdir")
     if not os.path.exists(workdir_path):
         os.mkdir(workdir_path)
@@ -83,7 +86,6 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, 
     commands = "\n".join(commandlist)
     shellscript_content = shellscript_template.format(COMMANDS=commands,TASKDIR=workdir_path)
     executable_path = os.path.join(workdir_path,"condor_"+executable+".sh")
-    condorjdl_path = os.path.join(workdir_path,"condor_"+executable+".jdl")
     jobdb_path = os.path.join(workdir_path,"condor_"+executable+".json")
     datasetdb_path = os.path.join(workdir_path,"dataset.json")
     with open(executable_path,"w") as shellscript:
@@ -93,21 +95,37 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, 
     condorjdl_template_path = os.path.join(os.environ["CMSSW_BASE"],"src/HiggsAnalysis/friend-tree-producer/data/submit_condor_%s.jdl"%batch_cluster)
     condorjdl_template_file = open(condorjdl_template_path,"r")
     condorjdl_template = condorjdl_template_file.read()
-    njobs = str(job_number)
-    if batch_cluster in  ["etp", "lxplus"]:
-        if walltime > 0:
-            condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(walltime))
+    argument_borders = np.append(np.arange(0,job_number,max_jobs_per_batch),[job_number])
+    first_borders = argument_borders[:-1]
+    last_borders = argument_borders[1:] -1
+    last_borders[-1] += 1
+    printout_list = []
+    for index, (first,last) in enumerate(zip(first_borders,last_borders)):
+        condorjdl_path = os.path.join(workdir_path,"condor_"+executable+"_%d.jdl"%index)
+        argument_list = np.arange(first,last+1)
+        arguments_path = os.path.join(workdir_path,"arguments_%d.txt"%(index))
+        with open(arguments_path, "w") as arguments_file:
+            arguments_file.write("\n".join([str(arg) for arg in argument_list]))
+            arguments_file.close()
+        njobs = "arguments from arguments_%d.txt"%(index)
+        if batch_cluster in  ["etp", "lxplus"]:
+            if walltime > 0:
+                condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(walltime))
+            else:
+                print "Warning: walltime for % cluster not set. Setting it to 1h."%batch_cluster
+                condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(3600))
         else:
-            print "Warning: walltime for % cluster not set. Setting it to 1h."%batch_cluster
-            condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(3600))
-    else:
-        condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs)
-    with open(condorjdl_path,"w") as condorjdl:
-        condorjdl.write(condorjdl_content)
-        condorjdl.close()
+            condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs)
+        with open(condorjdl_path,"w") as condorjdl:
+            condorjdl.write(condorjdl_content)
+            condorjdl.close()
+        printout_list.append("cd {TASKDIR}; condor_submit {CONDORJDL}".format(TASKDIR=workdir_path, CONDORJDL=condorjdl_path))
+    print
     print "To run the condor submission, execute the following:"
     print
-    print "cd {TASKDIR}; condor_submit {CONDORJDL}".format(TASKDIR=workdir_path, CONDORJDL=condorjdl_path)
+    print "\n".join(printout_list)
+    print
+
     with open(jobdb_path,"w") as db:
         db.write(json.dumps(job_database, sort_keys=True, indent=2))
         db.close()
@@ -149,11 +167,12 @@ def main():
     parser.add_argument('--events_per_job',required=True, type=int, help='Event to be processed by each job')
     parser.add_argument('--walltime',default=-1, type=int, help='Walltime to be set for the job (in seconds). If negative, then it will not be set. [Default: %(default)s]')
     parser.add_argument('--cores',default=5, type=int, help='Number of cores to be used for the collect command. [Default: %(default)s]')
+    parser.add_argument('--max_jobs_per_batch',default=10000, type=int, help='Maximal number of job per batch. [Default: %(default)s]')
     args = parser.parse_args()
 
     input_ntuples_list = glob.glob(os.path.join(args.input_ntuples_directory,"*","*.root"))
     if args.command == "submit":
-        prepare_jobs(input_ntuples_list, args.events_per_job, args.batch_cluster, args.executable, args.walltime)
+        prepare_jobs(input_ntuples_list, args.events_per_job, args.batch_cluster, args.executable, args.walltime, args.max_jobs_per_batch)
     elif args.command == "collect":
         collect_outputs(args.executable, args.cores)
 

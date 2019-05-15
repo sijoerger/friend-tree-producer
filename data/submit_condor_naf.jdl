@@ -1,5 +1,4 @@
 executable = {EXECUTABLE}
-arguments = $(ProcId)
 output                = {TASKDIR}/logging/$(ClusterId).$(ProcId).out
 error                 = {TASKDIR}/logging/$(ClusterId).$(ProcId).err
 log                   = {TASKDIR}/logging/$(ClusterId).log
