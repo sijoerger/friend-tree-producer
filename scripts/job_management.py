@@ -44,7 +44,8 @@ def write_trees_to_files(info):
 def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch):
     ntuple_database = {}
     for f in input_ntuples_list:
-        nick = os.path.basename(f).strip(".root")
+        nick = f.split("/")[-1].replace(".root","")
+        print "Saving inputs for %s"%nick
         ntuple_database[nick] = {}
         ntuple_database[nick]["path"] = f
         F = r.TFile.Open(f,"read")
@@ -58,10 +59,9 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, 
         for p in ntuple_database[nick]["pipelines"]:
             n_entries = ntuple_database[nick]["pipelines"][p]
             if n_entries > 0:
-                entry_list = np.append(np.arange(0,n_entries,events_per_job),[n_entries -1])
+                entry_list = np.append(np.arange(0,n_entries,events_per_job),[n_entries])
                 first_entries = entry_list[:-1]
                 last_entries = entry_list[1:] -1
-                last_entries[-1] += 1
                 for first,last in zip(first_entries, last_entries):
                     job_database[job_number] = {}
                     job_database[job_number]["input"] = ntuple_database[nick]["path"]
@@ -98,7 +98,6 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, 
     argument_borders = np.append(np.arange(0,job_number,max_jobs_per_batch),[job_number])
     first_borders = argument_borders[:-1]
     last_borders = argument_borders[1:] -1
-    last_borders[-1] += 1
     printout_list = []
     for index, (first,last) in enumerate(zip(first_borders,last_borders)):
         condorjdl_path = os.path.join(workdir_path,"condor_"+executable+"_%d.jdl"%index)
@@ -145,7 +144,7 @@ def collect_outputs(executable,cores):
     if not os.path.exists(collection_path):
         os.mkdir(collection_path)
     for jobnumber in sorted([int(k) for k in jobdb]):
-        nick = os.path.basename(jobdb[str(jobnumber)]["input"]).strip(".root")
+        nick = jobdb[str(jobnumber)]["input"].split("/")[-1].replace(".root","")
         pipeline = jobdb[str(jobnumber)]["folder"]
         tree = jobdb[str(jobnumber)]["tree"]
         first = jobdb[str(jobnumber)]["first_entry"]
