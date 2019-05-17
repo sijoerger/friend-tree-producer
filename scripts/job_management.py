@@ -41,7 +41,7 @@ def write_trees_to_files(info):
         tree.Write("",r.TObject.kOverwrite)
     outputfile.Close()
 
-def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch):
+def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch, custom_workdir_path):
     ntuple_database = {}
     for f in input_ntuples_list:
         nick = f.split("/")[-1].replace(".root","")
@@ -72,7 +72,10 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, 
                     job_number +=1
             else:
                 print "Warning: %s has no entries in pipeline %s"%(nick,p)
-    workdir_path = os.path.join(os.environ["CMSSW_BASE"],"src",executable+"_workdir")
+    if custom_workdir_path:
+        workdir_path = os.path.join(custom_workdir_path,executable+"_workdir")
+    else:
+        workdir_path = os.path.join(os.environ["CMSSW_BASE"],"src",executable+"_workdir")
     if not os.path.exists(workdir_path):
         os.mkdir(workdir_path)
     if not os.path.exists(os.path.join(workdir_path,"logging")):
@@ -167,11 +170,15 @@ def main():
     parser.add_argument('--walltime',default=-1, type=int, help='Walltime to be set for the job (in seconds). If negative, then it will not be set. [Default: %(default)s]')
     parser.add_argument('--cores',default=5, type=int, help='Number of cores to be used for the collect command. [Default: %(default)s]')
     parser.add_argument('--max_jobs_per_batch',default=10000, type=int, help='Maximal number of job per batch. [Default: %(default)s]')
+    parser.add_argument('--extended_file_access',default=None, type=str, help='Additional prefix for the file access, e.g. via xrootd.')
+    parser.add_argument('--custom_workdir_path',default=None, type=str, help='Absolute path to a workdir directory different from $CMSSW_BASE/src.')
     args = parser.parse_args()
 
     input_ntuples_list = glob.glob(os.path.join(args.input_ntuples_directory,"*","*.root"))
+    if args.extended_file_access:
+        input_ntuples_list = ["/".join([args.extended_file_access,f]) for f in input_ntuples_list]
     if args.command == "submit":
-        prepare_jobs(input_ntuples_list, args.events_per_job, args.batch_cluster, args.executable, args.walltime, args.max_jobs_per_batch)
+        prepare_jobs(input_ntuples_list, args.events_per_job, args.batch_cluster, args.executable, args.walltime, args.max_jobs_per_batch, args.custom_workdir_path)
     elif args.command == "collect":
         collect_outputs(args.executable, args.cores)
 
