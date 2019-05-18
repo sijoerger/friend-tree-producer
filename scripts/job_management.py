@@ -135,8 +135,11 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, 
         datasets.write(json.dumps(ntuple_database, sort_keys=True, indent=2))
         datasets.close()
 
-def collect_outputs(executable,cores):
-    workdir_path = os.path.join(os.environ["CMSSW_BASE"],"src",executable+"_workdir")
+def collect_outputs(executable,cores,custom_workdir_path):
+    if custom_workdir_path:
+        workdir_path = os.path.join(custom_workdir_path,executable+"_workdir")
+    else:
+        workdir_path = os.path.join(os.environ["CMSSW_BASE"],"src",executable+"_workdir")
     jobdb_path = os.path.join(workdir_path,"condor_"+executable+".json")
     datasetdb_path = os.path.join(workdir_path,"dataset.json")
     jobdb_file = open(jobdb_path,"r")
@@ -180,7 +183,7 @@ def main():
     if args.command == "submit":
         prepare_jobs(input_ntuples_list, args.events_per_job, args.batch_cluster, args.executable, args.walltime, args.max_jobs_per_batch, args.custom_workdir_path)
     elif args.command == "collect":
-        collect_outputs(args.executable, args.cores)
+        collect_outputs(args.executable, args.cores, args.custom_workdir_path)
 
 if __name__ == "__main__":
     main()
