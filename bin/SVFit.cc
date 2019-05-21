@@ -161,10 +161,20 @@ int main(int argc, char** argv)
         covMET[0][1] = metcov01;
         covMET[1][1] = metcov11;
 
+        // determine the right mass convention for the TauLepton decay products
+        Float_t mass_1, mass_2;
+        if(ditaudecay.first == MeasuredTauLepton::kTauToElecDecay)        mass_1 = 0.51100e-3;
+        else if(ditaudecay.first == MeasuredTauLepton::kTauToElecDecay)   mass_1 = 105.658e-3;
+        else                                                              mass_1 = m_1;
+
+        if(ditaudecay.second == MeasuredTauLepton::kTauToElecDecay)       mass_2 = 0.51100e-3;
+        else if(ditaudecay.second == MeasuredTauLepton::kTauToElecDecay)  mass_2 = 105.658e-3;
+        else                                                              mass_2 = m_2;
+
         // define lepton four vectors
         std::vector<MeasuredTauLepton> measuredTauLeptons;
-        measuredTauLeptons.push_back(MeasuredTauLepton(ditaudecay.first, pt_1, eta_1, phi_1, m_1, decayMode_1 >= 0 ? decayMode_1 : -1));
-        measuredTauLeptons.push_back(MeasuredTauLepton(ditaudecay.second,  pt_2, eta_2, phi_2, m_2, decayMode_2 >= 0 ? decayMode_2 : -1));
+        measuredTauLeptons.push_back(MeasuredTauLepton(ditaudecay.first, pt_1, eta_1, phi_1, mass_1, decayMode_1 >= 0 ? decayMode_1 : -1));
+        measuredTauLeptons.push_back(MeasuredTauLepton(ditaudecay.second,  pt_2, eta_2, phi_2, mass_2, decayMode_2 >= 0 ? decayMode_2 : -1));
 
         /*
            tauDecayModes:  0 one-prong without neutral pions
