@@ -20,7 +20,7 @@ namespace po = boost::program_options;
 float folder_to_kappa_parameter(std::string foldername)
 {
     std::string channel = folder_to_channel(foldername);
-    if(channel == "em")      return 3.0;
+    if(channel == "em" || channel == "ee" || channel == "mm") return 3.0;
     else if(channel == "et") return 4.0;
     else if(channel == "mt") return 4.0;
     else if(channel == "tt") return 5.0;
@@ -32,6 +32,8 @@ std::pair<MeasuredTauLepton::kDecayType,MeasuredTauLepton::kDecayType> folder_to
 {
     std::string channel = folder_to_channel(foldername);
     if(channel == "em")      return std::make_pair(MeasuredTauLepton::kTauToElecDecay,MeasuredTauLepton::kTauToMuDecay);
+    else if(channel == "ee") return std::make_pair(MeasuredTauLepton::kTauToElecDecay,MeasuredTauLepton::kTauToElecDecay);
+    else if(channel == "mm") return std::make_pair(MeasuredTauLepton::kTauToMuDecay,MeasuredTauLepton::kTauToMuDecay);
     else if(channel == "et") return std::make_pair(MeasuredTauLepton::kTauToElecDecay,MeasuredTauLepton::kTauToHadDecay);
     else if(channel == "mt") return std::make_pair(MeasuredTauLepton::kTauToMuDecay,MeasuredTauLepton::kTauToHadDecay);
     else if(channel == "tt") return std::make_pair(MeasuredTauLepton::kTauToHadDecay,MeasuredTauLepton::kTauToHadDecay);
