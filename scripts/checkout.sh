@@ -41,7 +41,15 @@ cd ..
 
 # TODO NN mass
 
-# TODO FF weights
+# FF weights
+git clone ssh://git@github.com/CMS-HTT/Jet2TauFakes.git HTTutilities/Jet2TauFakes
+cd HTTutilities/Jet2TauFakes
+git checkout v0.2.2
+git clone -b 2016 ssh://git@gitlab.cern.ch:7999/cms-htt/Jet2TauFakesFiles.git data_2016
+git clone -b 2017 ssh://git@gitlab.cern.ch:7999/cms-htt/Jet2TauFakesFiles.git data_2017
+git clone -b 2018 ssh://git@gitlab.cern.ch:7999/cms-htt/Jet2TauFakesFiles.git data_2018
+cd ../..
+git clone https://github.com/KIT-CMS/fake-factor-application.git HiggsAnalysis/fake-factor-application
 
 # TODO NN MET
 
@@ -51,6 +59,14 @@ cd ..
 
 ### Checkout of friend tree producer setup
 git clone https://github.com/KIT-CMS/friend-tree-producer.git HiggsAnalysis/friend-tree-producer
+
+# Data sources
+mkdir HiggsAnalysis/friend-tree-producer/data/input_params
+cd HiggsAnalysis/friend-tree-producer/data/input_params
+read -p "lxplus-username: " USERNMLXP
+scp ${USERNMLXP}@lxplus.cern.ch:/eos/home-s/swozniew/friend-tree-producer-input-params/* ./
+wget https://raw.githubusercontent.com/KIT-CMS/Kappa/dictchanges/Skimming/data/datasets.json
+cd -
 
 ### Compiling under CMSSW
 scram b -j $NUM_CORES
