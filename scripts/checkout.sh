@@ -65,7 +65,7 @@ mkdir HiggsAnalysis/friend-tree-producer/data/input_params
 cd HiggsAnalysis/friend-tree-producer/data/input_params
 read -p "lxplus-username: " USERNMLXP
 scp ${USERNMLXP}@lxplus.cern.ch:/eos/home-s/swozniew/friend-tree-producer-input-params/* ./
-wget https://raw.githubusercontent.com/KIT-CMS/Kappa/dictchanges/Skimming/data/datasets.json
+wget https://raw.githubusercontent.com/KIT-CMS/datasets/master/datasets.json
 cd -
 
 ### Compiling under CMSSW
