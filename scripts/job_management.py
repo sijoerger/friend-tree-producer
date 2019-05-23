@@ -41,7 +41,7 @@ def write_trees_to_files(info):
         tree.Write("",r.TObject.kOverwrite)
     outputfile.Close()
 
-def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch, custom_workdir_path):
+def prepare_jobs(input_ntuples_list, inputs_base_folder, inputs_friends_folders, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch, custom_workdir_path):
     ntuple_database = {}
     for f in input_ntuples_list:
         nick = f.split("/")[-1].replace(".root","")
@@ -69,6 +69,9 @@ def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, 
                     job_database[job_number]["tree"] = "ntuple"
                     job_database[job_number]["first_entry"] = first
                     job_database[job_number]["last_entry"] = last
+                    channel = p.split("_")[0]
+                    if channel in inputs_friends_folders.keys() and len(inputs_friends_folders[channel])>0:
+                        job_database[job_number]["input-friends"] = " ".join([job_database[job_number]["input"].replace(inputs_base_folder, friend_folder) for friend_folder in inputs_friends_folders[channel]])
                     job_number +=1
             else:
                 print "Warning: %s has no entries in pipeline %s"%(nick,p)
@@ -163,12 +166,43 @@ def collect_outputs(executable,cores,custom_workdir_path):
     pool = Pool(cores)
     pool.map(write_trees_to_files, zip(nicks,[collection_path]*len(nicks), [datasetdb]*len(nicks)))
 
+def extract_friend_paths(packed_paths):
+    extracted_paths = {
+        "em" : [],
+        "et" : [],
+        "mt" : [],
+        "tt" : []
+        }
+    for pathname in packed_paths:
+        splitpath=pathname.split('{')
+        et_path, mt_path, tt_path = splitpath[0], splitpath[0], splitpath[0]
+        path_per_ch = {}
+        for channel in extracted_paths.keys():
+            path_per_ch[channel] = splitpath[0]
+        first = True
+        for split in splitpath:
+            if first:
+                first = False
+            else:
+                subsplit = split.split('}')
+                chdict=json.loads('{"' + subsplit[0].replace(':', '":"').replace(',', '","') + '"}')
+                for channel in extracted_paths.keys():
+                    if channel in chdict.keys() and path_per_ch[channel]:
+                        path_per_ch[channel] += chdict[channel] + subsplit[1]
+                    elif len(chdict.keys())>0: # don't take channels into account if not provided by user unless there is no channel dependence at all
+                        path_per_ch[channel] = None
+        for channel in extracted_paths.keys():
+            if path_per_ch[channel]:
+                extracted_paths[channel].append(path_per_ch[channel])
+    return extracted_paths
+
 def main():
     parser = argparse.ArgumentParser(description='Script to manage condor batch system jobs for the executables and their outputs.')
     parser.add_argument('--executable',required=True, choices=['SVFit', 'MELA'], help='Executable to be used for friend tree creation ob the batch system.')
     parser.add_argument('--batch_cluster',required=True, choices=['naf','etp', 'lxplus'], help='Batch system cluster to be used.')
     parser.add_argument('--command',required=True, choices=['submit','collect'], help='Command to be done by the job manager.')
     parser.add_argument('--input_ntuples_directory',required=True, help='Directory where the input files can be found. The file structure in the directory should match */*.root wildcard.')
+    parser.add_argument('--friend_ntuples_directories', nargs='+', default=[], help='Directory where the friend files can be found. The file structure in the directory should match the one of the base ntuples. Channel dependent parts of the path can be inserted like /commonpath/{et:et_folder,mt:mt_folder,tt:tt_folder}/commonpath.')
     parser.add_argument('--events_per_job',required=True, type=int, help='Event to be processed by each job')
     parser.add_argument('--walltime',default=-1, type=int, help='Walltime to be set for the job (in seconds). If negative, then it will not be set. [Default: %(default)s]')
     parser.add_argument('--cores',default=5, type=int, help='Number of cores to be used for the collect command. [Default: %(default)s]')
@@ -178,10 +212,11 @@ def main():
     args = parser.parse_args()
 
     input_ntuples_list = glob.glob(os.path.join(args.input_ntuples_directory,"*","*.root"))
+    extracted_friend_paths = extract_friend_paths(args.friend_ntuples_directories)
     if args.extended_file_access:
         input_ntuples_list = ["/".join([args.extended_file_access,f]) for f in input_ntuples_list]
     if args.command == "submit":
-        prepare_jobs(input_ntuples_list, args.events_per_job, args.batch_cluster, args.executable, args.walltime, args.max_jobs_per_batch, args.custom_workdir_path)
+        prepare_jobs(input_ntuples_list, args.input_ntuples_directory, extracted_friend_paths, args.events_per_job, args.batch_cluster, args.executable, args.walltime, args.max_jobs_per_batch, args.custom_workdir_path)
     elif args.command == "collect":
         collect_outputs(args.executable, args.cores, args.custom_workdir_path)
 
