@@ -128,5 +128,5 @@ def main(args):
 if __name__ == "__main__":
     args = parse_arguments()
     setup_logging("FakeFactors_%s_%s_%s_%s.log"%(os.path.basename(args.input).replace(".root",""), args.folder, args.first_entry, args.last_entry),
-                  logging.INFO)
+                  logging.WARNING)
     main(args)
