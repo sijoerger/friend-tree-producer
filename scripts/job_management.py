@@ -7,6 +7,7 @@ import json
 import os
 import numpy as np
 import stat
+import re
 from multiprocessing import Pool
 
 shellscript_template = '''#!/bin/sh
@@ -41,7 +42,44 @@ def write_trees_to_files(info):
         tree.Write("",r.TObject.kOverwrite)
     outputfile.Close()
 
-def prepare_jobs(input_ntuples_list, inputs_base_folder, inputs_friends_folders, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch, custom_workdir_path):
+def check_and_resubmit(executable,logfile,custom_workdir_path):
+    # for now only works for one logfile and if all jobs are submitted in one batch
+    if custom_workdir_path:
+        workdir_path = os.path.join(custom_workdir_path,executable+"_workdir")
+    else:
+        workdir_path = os.path.join(os.environ["CMSSW_BASE"],"src",executable+"_workdir")
+    jobdb_path = os.path.join(workdir_path,"condor_"+executable+".json")
+    jobdb_file = open(jobdb_path,"r")
+    jobdb = json.loads(jobdb_file.read())
+    if logfile == "":
+        files = os.listdir(os.path.join(workdir_path,"logging"))
+        paths = [os.path.join(os.path.join(workdir_path,"logging"), basename) for basename in files]
+        logfile = max(paths, key=os.path.getsize)
+    print "Reading results from {}".format(logfile)
+    matches = []
+    regex = re.compile(r'((.*\n){1}) *.* removed',re.MULTILINE)
+    with open(logfile, "r") as file:
+        m = [m.groups() for m in regex.finditer(file.read())]
+    for entry in m:
+        matches.append(entry[0].split(".")[1])
+    arguments_path = os.path.join(workdir_path,"arguments_0_resubmit.txt")
+    with open(arguments_path, "w") as arguments_file:
+        arguments_file.write("\n".join([str(arg) for arg in matches]))
+        arguments_file.close()
+
+    condor_jdl_path = os.path.join(workdir_path,"condor_"+executable+"_0.jdl")
+    with open(condor_jdl_path, "r") as file:
+        condor_jdl_resubmit = file.read()
+    condor_jdl_resubmit_path = os.path.join(workdir_path,"condor_"+executable+"_0_resubmit.jdl")
+    condor_jdl_resubmit = re.sub("\.txt","_resubmit.txt",condor_jdl_resubmit)
+    with open(condor_jdl_resubmit_path, "w") as file:
+        file.write(condor_jdl_resubmit)
+        file.close
+    print 
+    print "To run the resubmission, check {} first".format(condor_jdl_resubmit_path)
+
+
+def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch, custom_workdir_path):
     ntuple_database = {}
     for f in input_ntuples_list:
         nick = f.split("/")[-1].replace(".root","")
@@ -200,7 +238,7 @@ def main():
     parser = argparse.ArgumentParser(description='Script to manage condor batch system jobs for the executables and their outputs.')
     parser.add_argument('--executable',required=True, choices=['SVFit', 'MELA'], help='Executable to be used for friend tree creation ob the batch system.')
     parser.add_argument('--batch_cluster',required=True, choices=['naf','etp', 'lxplus'], help='Batch system cluster to be used.')
-    parser.add_argument('--command',required=True, choices=['submit','collect'], help='Command to be done by the job manager.')
+    parser.add_argument('--command',required=True, choices=['submit','collect','check'], help='Command to be done by the job manager.')
     parser.add_argument('--input_ntuples_directory',required=True, help='Directory where the input files can be found. The file structure in the directory should match */*.root wildcard.')
     parser.add_argument('--friend_ntuples_directories', nargs='+', default=[], help='Directory where the friend files can be found. The file structure in the directory should match the one of the base ntuples. Channel dependent parts of the path can be inserted like /commonpath/{et:et_folder,mt:mt_folder,tt:tt_folder}/commonpath.')
     parser.add_argument('--events_per_job',required=True, type=int, help='Event to be processed by each job')
@@ -209,6 +247,8 @@ def main():
     parser.add_argument('--max_jobs_per_batch',default=10000, type=int, help='Maximal number of job per batch. [Default: %(default)s]')
     parser.add_argument('--extended_file_access',default=None, type=str, help='Additional prefix for the file access, e.g. via xrootd.')
     parser.add_argument('--custom_workdir_path',default=None, type=str, help='Absolute path to a workdir directory different from $CMSSW_BASE/src.')
+    parser.add_argument('--logfile',default="", type=str, help='Full path to the condor logfile')
+
     args = parser.parse_args()
 
     input_ntuples_list = glob.glob(os.path.join(args.input_ntuples_directory,"*","*.root"))
@@ -219,6 +259,7 @@ def main():
         prepare_jobs(input_ntuples_list, args.input_ntuples_directory, extracted_friend_paths, args.events_per_job, args.batch_cluster, args.executable, args.walltime, args.max_jobs_per_batch, args.custom_workdir_path)
     elif args.command == "collect":
         collect_outputs(args.executable, args.cores, args.custom_workdir_path)
-
+    elif args.command == "check":
+        check_and_resubmit(args.executable, args.logfile, args.custom_workdir_path)
 if __name__ == "__main__":
     main()
