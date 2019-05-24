@@ -74,3 +74,11 @@ job_management.py --executable MELA --input_ntuples_directory Full_2017_test_mt_
 ```
 
 This command will create another folder at `<PWD>/MELA_workdir/MELA_collected/` and put there the merged outputs matching a `*/*.root` structure.
+
+### Check and resubmit failed condor jobs
+The collect command does not end successfully, if some condor jobs did not finish successfully. To create a configuration to resubmit the crashed jobs, run 
+
+```bash
+job_management.py --executable MELA --command check --custom_workdir_path "/path/to/workdir" --logfile path/to/logfile 
+```
+This will create a `*resubmit.jdl` file which only submits jobs that did not end successfully
