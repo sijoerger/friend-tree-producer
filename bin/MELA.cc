@@ -6,6 +6,8 @@
 #include "TTree.h"
 #include "TVector2.h"
 
+#include <math.h>
+
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
@@ -178,7 +180,15 @@ int main(int argc, char **argv) {
     mela.computeProdP(ME_z2j_2, false);
 
     // Compute discriminator
-    ME_D = ME_vbf / (ME_vbf + ME_z2j_1 + ME_z2j_2);
+    if ((ME_vbf + ME_z2j_1 + ME_z2j_2) != 0.0)
+    {
+        ME_D = ME_vbf / (ME_vbf + ME_z2j_1 + ME_z2j_2);
+    }
+    else
+    {
+        std::cout << "WARNING: ME_D = X / 0. Setting it to default " << default_float << std::endl;
+        ME_D = default_float;
+    }
 
     // Fill output tree
     melafriend->Fill();
