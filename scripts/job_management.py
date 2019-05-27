@@ -36,10 +36,11 @@ def write_trees_to_files(info):
         os.mkdir(nick_path)
     outputfile = r.TFile.Open(os.path.join(nick_path,nick+".root"),"recreate")
     for p in db[nick]["pipelines"]:
-        outputfile.mkdir(p)
-        outputfile.cd(p)
-        tree = db[nick][p].CopyTree("")
-        tree.Write("",r.TObject.kOverwrite)
+        if db[nick]["pipelines"][p] > 0:
+            outputfile.mkdir(p)
+            outputfile.cd(p)
+            tree = db[nick][p].CopyTree("")
+            tree.Write("",r.TObject.kOverwrite)
     outputfile.Close()
 
 def check_and_resubmit(executable,logfile,custom_workdir_path):
