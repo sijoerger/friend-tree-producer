@@ -13,6 +13,7 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/program_options.hpp>
@@ -45,6 +46,10 @@ int main(int argc, char **argv) {
      ("lwtnn_config",  po::value<std::string>(&lwtnn_config)->default_value(lwtnn_config));
   po::store(po::command_line_parser(argc, argv).options(config).run(), vm);
   po::notify(vm);
+  // Add additional info inferred from options above
+  std::vector<std::string> folder_split;
+  boost::split(folder_split, folder, boost::is_any_of("_"));
+  std::string channel = folder_split.at(0);
 
   // Access input file and tree
   auto in = TFile::Open(input.c_str(), "read");
@@ -87,8 +92,14 @@ int main(int argc, char **argv) {
   for(size_t n=0; n < nnconfig.outputs.size(); n++)
   {
     outputs[nnconfig.outputs.at(n)] = 0.0;
-    nnfriend->Branch((nnconfig.outputs.at(n)).c_str(), &(outputs.find(nnconfig.outputs.at(n))->second), (nnconfig.outputs.at(n)+"/F").c_str());
+    nnfriend->Branch((channel+"_"+nnconfig.outputs.at(n)).c_str(), &(outputs.find(nnconfig.outputs.at(n))->second), (channel+"_"+nnconfig.outputs.at(n)+"/F").c_str());
   }
+  Float_t max_score = default_float;
+  Float_t max_index = 0.0;
+  std::string max_score_name = channel+"_max_score";
+  std::string max_index_name = channel+"_max_index";
+  nnfriend->Branch(max_score_name.c_str(), &max_score, (max_score_name+"/F").c_str());
+  nnfriend->Branch(max_index_name.c_str(), &max_index, (max_index_name+"/F").c_str());
 
   // Loop over desired events of the input tree & compute outputs
   for (unsigned int i = first_entry; i <= last_entry; i++) {
@@ -106,13 +117,23 @@ int main(int argc, char **argv) {
     auto model_outputs = model.compute(model_inputs);
 
     // Fill output map
-    for(const auto& output: model_outputs)
+    for(size_t index=0; index < nnconfig.outputs.size(); index++)
     {
-      outputs[output.first] = output.second;
+      auto output_value = model_outputs[nnconfig.outputs.at(index)];
+      outputs[nnconfig.outputs.at(index)] = output_value;
+      if (output_value > max_score)
+      {
+        max_score = output_value;
+        max_index = index;
+      }
     }
 
     // Fill output tree
     nnfriend->Fill();
+
+    // Reset max quantities
+    max_score = default_float;
+    max_index = 0.0;
   }
 
   // Fill output file
