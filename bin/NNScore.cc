@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
   std::vector<std::string> input_friends  = {};
   std::string folder = "mt_nominal";
   std::string tree = "ntuple";
-  std::string lwtnn_config = "fold0_keras_lwtnn.json";
+  std::string lwtnn_config = "HiggsAnalysis/friend-tree-producer/data/inputs_lwtnn/";
   unsigned int first_entry = 0;
   unsigned int last_entry = 9;
   po::variables_map vm;
@@ -64,17 +64,25 @@ int main(int argc, char **argv) {
   if (!boost::filesystem::exists(lwtnn_config)) {
       throw std::runtime_error("LWTNN config file does not exist.");
   }
-  std::ifstream config_file(lwtnn_config);
-  auto nnconfig = lwt::parse_json(config_file);
-  lwt::LightweightNeuralNetwork model(nnconfig.inputs, nnconfig.layers, nnconfig.outputs);
+  std::map<int,lwt::LightweightNeuralNetwork*> models;
+
+  std::ifstream config_file0(lwtnn_config+"/fold0_lwtnn.json");
+  auto nnconfig0 = lwt::parse_json(config_file0);
+  models[0] = new lwt::LightweightNeuralNetwork(nnconfig0.inputs, nnconfig0.layers, nnconfig0.outputs);
+
+  std::ifstream config_file1(lwtnn_config+"/fold1_lwtnn.json");
+  auto nnconfig1 = lwt::parse_json(config_file1);
+  models[1] = new lwt::LightweightNeuralNetwork(nnconfig1.inputs, nnconfig1.layers, nnconfig1.outputs);
 
   // Initialize inputs
   std::map<std::string, Float_t> inputs;
-  for(size_t n=0; n < nnconfig.inputs.size(); n++)
+  for(size_t n=0; n < nnconfig0.inputs.size(); n++)
   {
-    inputs[nnconfig.inputs.at(n).name] = 0.0;
-    inputtree->SetBranchAddress((nnconfig.inputs.at(n).name).c_str(), &(inputs.find(nnconfig.inputs.at(n).name)->second));
+    inputs[nnconfig0.inputs.at(n).name] = 0.0;
+    inputtree->SetBranchAddress((nnconfig0.inputs.at(n).name).c_str(), &(inputs.find(nnconfig0.inputs.at(n).name)->second));
   }
+  ULong64_t event;
+  inputtree->SetBranchAddress("event", &event);
 
   // Initialize output file
   auto outputname =
@@ -89,10 +97,10 @@ int main(int argc, char **argv) {
 
   // Initialize outputs for the tree
   std::map<std::string, Float_t> outputs;
-  for(size_t n=0; n < nnconfig.outputs.size(); n++)
+  for(size_t n=0; n < nnconfig0.outputs.size(); n++)
   {
-    outputs[nnconfig.outputs.at(n)] = 0.0;
-    nnfriend->Branch((channel+"_"+nnconfig.outputs.at(n)).c_str(), &(outputs.find(nnconfig.outputs.at(n))->second), (channel+"_"+nnconfig.outputs.at(n)+"/F").c_str());
+    outputs[nnconfig0.outputs.at(n)] = 0.0;
+    nnfriend->Branch((channel+"_"+nnconfig0.outputs.at(n)).c_str(), &(outputs.find(nnconfig0.outputs.at(n))->second), (channel+"_"+nnconfig0.outputs.at(n)+"/F").c_str());
   }
   Float_t max_score = default_float;
   Float_t max_index = 0.0;
@@ -105,6 +113,7 @@ int main(int argc, char **argv) {
   for (unsigned int i = first_entry; i <= last_entry; i++) {
     // Get entry
     inputtree->GetEntry(i);
+    std::cout << "Event: " <<  event << std::endl;
 
     // Convert the inputs from Float_t to double
     std::map<std::string, double> model_inputs;
@@ -114,13 +123,13 @@ int main(int argc, char **argv) {
     }
    
     // Apply model on inputs
-    auto model_outputs = model.compute(model_inputs);
+    auto model_outputs = models[event % 2]->compute(model_inputs);
 
     // Fill output map
-    for(size_t index=0; index < nnconfig.outputs.size(); index++)
+    for(size_t index=0; index < nnconfig0.outputs.size(); index++)
     {
-      auto output_value = model_outputs[nnconfig.outputs.at(index)];
-      outputs[nnconfig.outputs.at(index)] = output_value;
+      auto output_value = model_outputs[nnconfig0.outputs.at(index)];
+      outputs[nnconfig0.outputs.at(index)] = output_value;
       if (output_value > max_score)
       {
         max_score = output_value;
