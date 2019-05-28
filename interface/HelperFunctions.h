@@ -23,3 +23,5 @@ std::string outputname_from_settings(std::string input, std::string folder, unsi
     std::string outputname = filename + "/" + filename + "_" + folder + "_" + std::to_string(first_entry) + "_" + std::to_string(last_entry) + ".root";
     return outputname;
 }
+
+const auto default_float = -10.f;

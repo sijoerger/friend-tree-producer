@@ -110,7 +110,6 @@ int main(int argc, char **argv) {
   Mela mela(erg_tev, mPOLE, verbosity);
 
   // Loop over desired events of the input tree & compute outputs
-  const auto default_float = -10.f;
   for (unsigned int i = first_entry; i <= last_entry; i++) {
     // Get entry
     inputtree->GetEntry(i);

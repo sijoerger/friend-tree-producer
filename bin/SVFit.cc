@@ -138,8 +138,6 @@ int main(int argc, char** argv)
   float kappa_parameter = folder_to_kappa_parameter(folder); // fully-leptonic: 3.0, semi-leptonic: 4.0; fully-hadronic: 5.0
   std::pair<MeasuredTauLepton::kDecayType,MeasuredTauLepton::kDecayType> ditaudecay = folder_to_ditaudecay(folder);
 
-  float default_float = -10.0;
-
   // Initialize ClassicSVFit
   ClassicSVfit svFitAlgo(0);
   svFitAlgo.addLogM_fixed(true, kappa_parameter);
