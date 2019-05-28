@@ -80,7 +80,7 @@ def check_and_resubmit(executable,logfile,custom_workdir_path):
     print "To run the resubmission, check {} first".format(condor_jdl_resubmit_path)
 
 
-def prepare_jobs(input_ntuples_list, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch, custom_workdir_path):
+def prepare_jobs(input_ntuples_list, inputs_base_folder, inputs_friends_folders, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch, custom_workdir_path):
     ntuple_database = {}
     for f in input_ntuples_list:
         nick = f.split("/")[-1].replace(".root","")
