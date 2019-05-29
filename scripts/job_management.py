@@ -185,7 +185,7 @@ def collect_outputs(executable,cores,custom_workdir_path):
     pool = Pool(cores)
     pool.map(write_trees_to_files, zip(nicks,[collection_path]*len(nicks), [datasetdb]*len(nicks)))
 
-def check_and_resubmit(executable,cores,custom_workdir_path):
+def check_and_resubmit(executable,custom_workdir_path):
     if custom_workdir_path:
         workdir_path = os.path.join(custom_workdir_path,executable+"_workdir")
     else:
@@ -259,7 +259,7 @@ def extract_friend_paths(packed_paths):
 
 def main():
     parser = argparse.ArgumentParser(description='Script to manage condor batch system jobs for the executables and their outputs.')
-    parser.add_argument('--executable',required=True, choices=['SVFit', 'MELA'], help='Executable to be used for friend tree creation ob the batch system.')
+    parser.add_argument('--executable',required=True, choices=['SVFit', 'MELA', 'NNScore', 'NNMass', 'FakeFactors'], help='Executable to be used for friend tree creation ob the batch system.')
     parser.add_argument('--batch_cluster',required=True, choices=['naf','etp', 'lxplus'], help='Batch system cluster to be used.')
     parser.add_argument('--command',required=True, choices=['submit','collect','check'], help='Command to be done by the job manager.')
     parser.add_argument('--input_ntuples_directory',required=True, help='Directory where the input files can be found. The file structure in the directory should match */*.root wildcard.')
@@ -270,7 +270,6 @@ def main():
     parser.add_argument('--max_jobs_per_batch',default=10000, type=int, help='Maximal number of job per batch. [Default: %(default)s]')
     parser.add_argument('--extended_file_access',default=None, type=str, help='Additional prefix for the file access, e.g. via xrootd.')
     parser.add_argument('--custom_workdir_path',default=None, type=str, help='Absolute path to a workdir directory different from $CMSSW_BASE/src.')
-    parser.add_argument('--logfile',default="", type=str, help='Full path to the condor logfile')
 
     args = parser.parse_args()
 
@@ -283,6 +282,6 @@ def main():
     elif args.command == "collect":
         collect_outputs(args.executable, args.cores, args.custom_workdir_path)
     elif args.command == "check":
-        check_and_resubmit(args.executable, args.logfile, args.custom_workdir_path)
+        check_and_resubmit(args.executable, args.custom_workdir_path)
 if __name__ == "__main__":
     main()
