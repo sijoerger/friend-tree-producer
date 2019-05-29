@@ -5,6 +5,7 @@
 #include "TFile.h"
 #include "TH1F.h"
 #include "TTree.h"
+#include "TLeaf.h"
 #include "TVector2.h"
 #include "Math/LorentzVector.h"
 #include "Math/PtEtaPhiM4D.h"
@@ -69,19 +70,34 @@ int main(int argc, char **argv) {
   std::ifstream config_file0(lwtnn_config+"/fold0_lwtnn.json");
   auto nnconfig0 = lwt::parse_json(config_file0);
   models[1] = new lwt::LightweightNeuralNetwork(nnconfig0.inputs, nnconfig0.layers, nnconfig0.outputs);
-  std::cout << "Loading fold0 model for application on ODD events" << std::endl;
+  std::cout << "Loading fold0 model for application on ODD events (event % 2 == 1)" << std::endl;
 
   std::ifstream config_file1(lwtnn_config+"/fold1_lwtnn.json");
   auto nnconfig1 = lwt::parse_json(config_file1);
   models[0] = new lwt::LightweightNeuralNetwork(nnconfig1.inputs, nnconfig1.layers, nnconfig1.outputs);
-  std::cout << "Loading fold1 model for application on EVEN events" << std::endl;
+  std::cout << "Loading fold1 model for application on EVEN events (event % 2 == 0)" << std::endl;
 
   // Initialize inputs
-  std::map<std::string, Float_t> inputs;
+  std::map<std::string, Float_t> float_inputs;
+  std::map<std::string, Int_t> int_inputs;
   for(size_t n=0; n < nnconfig0.inputs.size(); n++)
   {
-    inputs[nnconfig0.inputs.at(n).name] = 0.0;
-    inputtree->SetBranchAddress((nnconfig0.inputs.at(n).name).c_str(), &(inputs.find(nnconfig0.inputs.at(n).name)->second));
+    std::string input_type = inputtree->GetLeaf((nnconfig0.inputs.at(n).name).c_str())->GetTypeName();
+    if(input_type == "Float_t")
+    {
+        float_inputs[nnconfig0.inputs.at(n).name] = 0.0;
+        inputtree->SetBranchAddress((nnconfig0.inputs.at(n).name).c_str(), &(float_inputs.find(nnconfig0.inputs.at(n).name)->second));
+    }
+    else if(input_type == "Int_t")
+    {
+        int_inputs[nnconfig0.inputs.at(n).name] = 0;
+        inputtree->SetBranchAddress((nnconfig0.inputs.at(n).name).c_str(), &(int_inputs.find(nnconfig0.inputs.at(n).name)->second));
+    }
+    else
+    {
+        std::cout << "Type " << input_type << " not implemented! Exiting with error code '1'" << std::endl;
+        return 1;
+    }
   }
   ULong64_t event;
   inputtree->SetBranchAddress("event", &event);
@@ -118,7 +134,11 @@ int main(int argc, char **argv) {
 
     // Convert the inputs from Float_t to double
     std::map<std::string, double> model_inputs;
-    for(auto &in : inputs)
+    for(auto &in : float_inputs)
+    {
+      model_inputs[in.first] = in.second;
+    }
+    for(auto &in : int_inputs)
     {
       model_inputs[in.first] = in.second;
     }
