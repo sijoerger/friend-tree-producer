@@ -217,7 +217,7 @@ def check_and_resubmit(executable,custom_workdir_path):
     with open(condor_jdl_path, "r") as file:
         condor_jdl_resubmit = file.read()
     condor_jdl_resubmit_path = os.path.join(workdir_path,"condor_"+executable+"_resubmit.jdl")
-    condor_jdl_resubmit = re.sub("\.txt","_resubmit.txt",condor_jdl_resubmit).replace("/0/","/remaining/")
+    condor_jdl_resubmit = re.sub("\_0.txt","_resubmit.txt",condor_jdl_resubmit).replace("/0/","/remaining/")
     with open(condor_jdl_resubmit_path, "w") as file:
         file.write(condor_jdl_resubmit)
         file.close
