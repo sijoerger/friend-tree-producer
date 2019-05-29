@@ -34,7 +34,7 @@ def parse_arguments():
         type=str,
         help="Input file.")
     parser.add_argument(
-        "--input-friends",
+        "--input_friends",
         nargs='+',
         type=str,
         default=[],
@@ -54,14 +54,14 @@ def parse_arguments():
         "Name of the root tree."
     )
     parser.add_argument(
-        "--first-entry",
+        "--first_entry",
         required=True,
         type=int,
         help=
         "Index of first event to process."
     )
     parser.add_argument(
-        "--last-entry",
+        "--last_entry",
         required=True,
         type=int,
         help=

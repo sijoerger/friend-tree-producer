@@ -10,6 +10,9 @@ import stat
 import re
 from multiprocessing import Pool
 
+
+r.gROOT.ProcessLine( "gErrorIgnoreLevel = 2001;")
+
 shellscript_template = '''#!/bin/sh
 ulimit -s unlimited
 set -e
@@ -43,42 +46,17 @@ def write_trees_to_files(info):
             tree.Write("",r.TObject.kOverwrite)
     outputfile.Close()
 
-def check_and_resubmit(executable,logfile,custom_workdir_path):
-    # for now only works for one logfile and if all jobs are submitted in one batch
-    if custom_workdir_path:
-        workdir_path = os.path.join(custom_workdir_path,executable+"_workdir")
+def check_output_files(f):
+    valid_file = True
+    if not os.path.exists(f):
+        valid_file = False
+        print "File not there:",f
     else:
-        workdir_path = os.path.join(os.environ["CMSSW_BASE"],"src",executable+"_workdir")
-    jobdb_path = os.path.join(workdir_path,"condor_"+executable+".json")
-    jobdb_file = open(jobdb_path,"r")
-    jobdb = json.loads(jobdb_file.read())
-    if logfile == "":
-        files = os.listdir(os.path.join(workdir_path,"logging"))
-        paths = [os.path.join(os.path.join(workdir_path,"logging"), basename) for basename in files]
-        logfile = max(paths, key=os.path.getsize)
-    print "Reading results from {}".format(logfile)
-    matches = []
-    regex = re.compile(r'((.*\n){1}) *.* removed',re.MULTILINE)
-    with open(logfile, "r") as file:
-        m = [m.groups() for m in regex.finditer(file.read())]
-    for entry in m:
-        matches.append(entry[0].split(".")[1])
-    arguments_path = os.path.join(workdir_path,"arguments_0_resubmit.txt")
-    with open(arguments_path, "w") as arguments_file:
-        arguments_file.write("\n".join([str(arg) for arg in matches]))
-        arguments_file.close()
-
-    condor_jdl_path = os.path.join(workdir_path,"condor_"+executable+"_0.jdl")
-    with open(condor_jdl_path, "r") as file:
-        condor_jdl_resubmit = file.read()
-    condor_jdl_resubmit_path = os.path.join(workdir_path,"condor_"+executable+"_0_resubmit.jdl")
-    condor_jdl_resubmit = re.sub("\.txt","_resubmit.txt",condor_jdl_resubmit)
-    with open(condor_jdl_resubmit_path, "w") as file:
-        file.write(condor_jdl_resubmit)
-        file.close
-    print 
-    print "To run the resubmission, check {} first".format(condor_jdl_resubmit_path)
-
+        F = r.TFile.Open(f, "read")
+        valid_file = not F.IsZombie() and not F.TestBit(r.TFile.kRecovered)
+        if not valid_file: print "File is corrupt: ",f
+        F.Close()
+    return valid_file
 
 def prepare_jobs(input_ntuples_list, inputs_base_folder, inputs_friends_folders, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch, custom_workdir_path):
     ntuple_database = {}
@@ -110,7 +88,7 @@ def prepare_jobs(input_ntuples_list, inputs_base_folder, inputs_friends_folders,
                     job_database[job_number]["last_entry"] = last
                     channel = p.split("_")[0]
                     if channel in inputs_friends_folders.keys() and len(inputs_friends_folders[channel])>0:
-                        job_database[job_number]["input-friends"] = " ".join([job_database[job_number]["input"].replace(inputs_base_folder, friend_folder) for friend_folder in inputs_friends_folders[channel]])
+                        job_database[job_number]["input_friends"] = " ".join([job_database[job_number]["input"].replace(inputs_base_folder, friend_folder) for friend_folder in inputs_friends_folders[channel]])
                     job_number +=1
             else:
                 print "Warning: %s has no entries in pipeline %s"%(nick,p)
@@ -147,6 +125,8 @@ def prepare_jobs(input_ntuples_list, inputs_base_folder, inputs_friends_folders,
     for index, (first,last) in enumerate(zip(first_borders,last_borders)):
         condorjdl_path = os.path.join(workdir_path,"condor_"+executable+"_%d.jdl"%index)
         argument_list = np.arange(first,last+1)
+        if not os.path.exists(os.path.join(workdir_path,"logging", str(index))):
+            os.mkdir(os.path.join(workdir_path,"logging", str(index)))
         arguments_path = os.path.join(workdir_path,"arguments_%d.txt"%(index))
         with open(arguments_path, "w") as arguments_file:
             arguments_file.write("\n".join([str(arg) for arg in argument_list]))
@@ -154,12 +134,12 @@ def prepare_jobs(input_ntuples_list, inputs_base_folder, inputs_friends_folders,
         njobs = "arguments from arguments_%d.txt"%(index)
         if batch_cluster in  ["etp", "lxplus"]:
             if walltime > 0:
-                condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(walltime))
+                condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,TASKNUMBER=str(index),EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(walltime))
             else:
                 print "Warning: walltime for %s cluster not set. Setting it to 1h."%batch_cluster
-                condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(3600))
+                condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,TASKNUMBER=str(index),EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(3600))
         else:
-            condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,EXECUTABLE=executable_path,NJOBS=njobs)
+            condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,TASKNUMBER=str(index),EXECUTABLE=executable_path,NJOBS=njobs)
         with open(condorjdl_path,"w") as condorjdl:
             condorjdl.write(condorjdl_content)
             condorjdl.close()
@@ -204,6 +184,48 @@ def collect_outputs(executable,cores,custom_workdir_path):
     nicks = sorted(datasetdb)
     pool = Pool(cores)
     pool.map(write_trees_to_files, zip(nicks,[collection_path]*len(nicks), [datasetdb]*len(nicks)))
+
+def check_and_resubmit(executable,cores,custom_workdir_path):
+    if custom_workdir_path:
+        workdir_path = os.path.join(custom_workdir_path,executable+"_workdir")
+    else:
+        workdir_path = os.path.join(os.environ["CMSSW_BASE"],"src",executable+"_workdir")
+    jobdb_path = os.path.join(workdir_path,"condor_"+executable+".json")
+    datasetdb_path = os.path.join(workdir_path,"dataset.json")
+    jobdb_file = open(jobdb_path,"r")
+    jobdb = json.loads(jobdb_file.read())
+    datasetdb_file = open(datasetdb_path,"r")
+    datasetdb = json.loads(datasetdb_file.read())
+    arguments_path = os.path.join(workdir_path,"arguments_resubmit.txt")
+    job_to_resubmit = []
+    for jobnumber in sorted([int(k) for k in jobdb]):
+        nick = jobdb[str(jobnumber)]["input"].split("/")[-1].replace(".root","")
+        pipeline = jobdb[str(jobnumber)]["folder"]
+        tree = jobdb[str(jobnumber)]["tree"]
+        first = jobdb[str(jobnumber)]["first_entry"]
+        last = jobdb[str(jobnumber)]["last_entry"]
+        filename = "_".join([nick,pipeline,str(first),str(last)])+".root"
+        filepath = os.path.join(workdir_path,nick,filename)
+        if not check_output_files(filepath):
+            job_to_resubmit.append(jobnumber)
+    with open(arguments_path, "w") as arguments_file:
+        arguments_file.write("\n".join([str(arg) for arg in job_to_resubmit]))
+        arguments_file.close()
+    if not os.path.exists(os.path.join(workdir_path,"logging", "remaining")):
+        os.mkdir(os.path.join(workdir_path,"logging", "remaining"))
+    condor_jdl_path = os.path.join(workdir_path,"condor_"+executable+"_0.jdl")
+    with open(condor_jdl_path, "r") as file:
+        condor_jdl_resubmit = file.read()
+    condor_jdl_resubmit_path = os.path.join(workdir_path,"condor_"+executable+"_resubmit.jdl")
+    condor_jdl_resubmit = re.sub("\.txt","_resubmit.txt",condor_jdl_resubmit).replace("/0/","/remaining/")
+    with open(condor_jdl_resubmit_path, "w") as file:
+        file.write(condor_jdl_resubmit)
+        file.close
+    print
+    print "To run the resubmission, check {} first".format(condor_jdl_resubmit_path)
+    print "Command:"
+    print "cd {TASKDIR}; condor_submit {CONDORJDL}".format(TASKDIR=workdir_path, CONDORJDL=condorjdl_resubmit_path)
+
 
 def extract_friend_paths(packed_paths):
     extracted_paths = {
