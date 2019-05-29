@@ -19,6 +19,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/program_options.hpp>
 #include <boost/regex.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 #include <iostream>
 
@@ -32,7 +34,8 @@ int main(int argc, char **argv) {
   std::vector<std::string> input_friends  = {};
   std::string folder = "mt_nominal";
   std::string tree = "ntuple";
-  std::string lwtnn_config = "HiggsAnalysis/friend-tree-producer/data/inputs_lwtnn/";
+  std::string lwtnn_config = std::string(std::getenv("CMSSW_BASE"))+"/src/HiggsAnalysis/friend-tree-producer/data/inputs_lwtnn/";
+  std::string datasets = std::string(std::getenv("CMSSW_BASE"))+"/src/HiggsAnalysis/friend-tree-producer/data/input_params/datasets.json";
   unsigned int first_entry = 0;
   unsigned int last_entry = 9;
   po::variables_map vm;
@@ -44,13 +47,22 @@ int main(int argc, char **argv) {
      ("tree",          po::value<std::string>(&tree)->default_value(tree))
      ("first_entry",   po::value<unsigned int>(&first_entry)->default_value(first_entry))
      ("last_entry",    po::value<unsigned int>(&last_entry)->default_value(last_entry))
-     ("lwtnn_config",  po::value<std::string>(&lwtnn_config)->default_value(lwtnn_config));
+     ("lwtnn_config",  po::value<std::string>(&lwtnn_config)->default_value(lwtnn_config))
+     ("datasets",  po::value<std::string>(&datasets)->default_value(datasets));
   po::store(po::command_line_parser(argc, argv).options(config).run(), vm);
   po::notify(vm);
   // Add additional info inferred from options above
   std::vector<std::string> folder_split;
   boost::split(folder_split, folder, boost::is_any_of("_"));
   std::string channel = folder_split.at(0);
+  std::vector<std::string> input_split;
+  boost::split(input_split, input, boost::is_any_of("/"));
+  std::string nick = input_split.end()[-2];
+
+  // Load datasets.json to determine year of the sample per nick
+  boost::property_tree::ptree datasets_json;
+  boost::property_tree::json_parser::read_json(datasets,datasets_json);
+  int year = datasets_json.get_child(nick).get<int>("year");
 
   // Access input file and tree
   auto in = TFile::Open(input.c_str(), "read");
@@ -67,12 +79,12 @@ int main(int argc, char **argv) {
   }
   std::map<int,lwt::LightweightNeuralNetwork*> models;
 
-  std::ifstream config_file0(lwtnn_config+"/fold0_lwtnn.json");
+  std::ifstream config_file0(lwtnn_config+"/"+std::to_string(year)+"/"+channel+"/fold0_lwtnn.json");
   auto nnconfig0 = lwt::parse_json(config_file0);
   models[1] = new lwt::LightweightNeuralNetwork(nnconfig0.inputs, nnconfig0.layers, nnconfig0.outputs);
   std::cout << "Loading fold0 model for application on ODD events (event % 2 == 1)" << std::endl;
 
-  std::ifstream config_file1(lwtnn_config+"/fold1_lwtnn.json");
+  std::ifstream config_file1(lwtnn_config+"/"+std::to_string(year)+"/"+channel+"/fold1_lwtnn.json");
   auto nnconfig1 = lwt::parse_json(config_file1);
   models[0] = new lwt::LightweightNeuralNetwork(nnconfig1.inputs, nnconfig1.layers, nnconfig1.outputs);
   std::cout << "Loading fold1 model for application on EVEN events (event % 2 == 0)" << std::endl;
