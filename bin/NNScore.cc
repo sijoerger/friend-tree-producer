@@ -68,11 +68,13 @@ int main(int argc, char **argv) {
 
   std::ifstream config_file0(lwtnn_config+"/fold0_lwtnn.json");
   auto nnconfig0 = lwt::parse_json(config_file0);
-  models[0] = new lwt::LightweightNeuralNetwork(nnconfig0.inputs, nnconfig0.layers, nnconfig0.outputs);
+  models[1] = new lwt::LightweightNeuralNetwork(nnconfig0.inputs, nnconfig0.layers, nnconfig0.outputs);
+  std::cout << "Loading fold0 model for application on ODD events" << std::endl;
 
   std::ifstream config_file1(lwtnn_config+"/fold1_lwtnn.json");
   auto nnconfig1 = lwt::parse_json(config_file1);
-  models[1] = new lwt::LightweightNeuralNetwork(nnconfig1.inputs, nnconfig1.layers, nnconfig1.outputs);
+  models[0] = new lwt::LightweightNeuralNetwork(nnconfig1.inputs, nnconfig1.layers, nnconfig1.outputs);
+  std::cout << "Loading fold1 model for application on EVEN events" << std::endl;
 
   // Initialize inputs
   std::map<std::string, Float_t> inputs;
@@ -113,7 +115,6 @@ int main(int argc, char **argv) {
   for (unsigned int i = first_entry; i <= last_entry; i++) {
     // Get entry
     inputtree->GetEntry(i);
-    std::cout << "Event: " <<  event << std::endl;
 
     // Convert the inputs from Float_t to double
     std::map<std::string, double> model_inputs;
