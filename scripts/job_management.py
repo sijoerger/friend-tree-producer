@@ -224,7 +224,7 @@ def check_and_resubmit(executable,custom_workdir_path):
     print
     print "To run the resubmission, check {} first".format(condor_jdl_resubmit_path)
     print "Command:"
-    print "cd {TASKDIR}; condor_submit {CONDORJDL}".format(TASKDIR=workdir_path, CONDORJDL=condorjdl_resubmit_path)
+    print "cd {TASKDIR}; condor_submit {CONDORJDL}".format(TASKDIR=workdir_path, CONDORJDL=condor_jdl_resubmit_path)
 
 
 def extract_friend_paths(packed_paths):
