@@ -42,8 +42,9 @@ def write_trees_to_files(info):
         if db[nick]["pipelines"][p] > 0:
             outputfile.mkdir(p)
             outputfile.cd(p)
-            tree = db[nick][p].CopyTree("")
+            tree = db[nick][p].CloneTree()
             tree.Write("",r.TObject.kOverwrite)
+            db[nick][p].Reset()
     outputfile.Close()
 
 def check_output_files(f):
