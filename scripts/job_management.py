@@ -59,7 +59,7 @@ def check_output_files(f):
         F.Close()
     return valid_file
 
-def prepare_jobs(input_ntuples_list, inputs_base_folder, inputs_friends_folders, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch, custom_workdir_path):
+def prepare_jobs(input_ntuples_list, inputs_base_folder, inputs_friends_folders, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch, custom_workdir_path, restrict_to_channels, restrict_to_shifts):
     ntuple_database = {}
     for f in input_ntuples_list:
         nick = f.split("/")[-1].replace(".root","")
@@ -68,6 +68,10 @@ def prepare_jobs(input_ntuples_list, inputs_base_folder, inputs_friends_folders,
         ntuple_database[nick]["path"] = f
         F = r.TFile.Open(f,"read")
         pipelines = [k.GetName() for k in F.GetListOfKeys()]
+        if len(restrict_to_channels) > 0:
+            pipelines = [p for p in pipelines if p.split("_")[0] in restrict_to_channels]
+        if len(restrict_to_shifts) > 0:
+            pipelines = [p for p in pipelines if p.split("_")[1] in restrict_to_shifts]
         ntuple_database[nick]["pipelines"] = {}
         for p in pipelines:
             ntuple_database[nick]["pipelines"][p] = F.Get(p).Get("ntuple").GetEntries()
@@ -271,6 +275,8 @@ def main():
     parser.add_argument('--max_jobs_per_batch',default=10000, type=int, help='Maximal number of job per batch. [Default: %(default)s]')
     parser.add_argument('--extended_file_access',default=None, type=str, help='Additional prefix for the file access, e.g. via xrootd.')
     parser.add_argument('--custom_workdir_path',default=None, type=str, help='Absolute path to a workdir directory different from $CMSSW_BASE/src.')
+    parser.add_argument('--restrict_to_channels', nargs='+', default=[], help='Produce friends only for certain channels')
+    parser.add_argument('--restrict_to_shifts', nargs='+', default=[], help='Produce friends only for certain shifts')
 
     args = parser.parse_args()
 
@@ -279,7 +285,7 @@ def main():
     if args.extended_file_access:
         input_ntuples_list = ["/".join([args.extended_file_access,f]) for f in input_ntuples_list]
     if args.command == "submit":
-        prepare_jobs(input_ntuples_list, args.input_ntuples_directory, extracted_friend_paths, args.events_per_job, args.batch_cluster, args.executable, args.walltime, args.max_jobs_per_batch, args.custom_workdir_path)
+        prepare_jobs(input_ntuples_list, args.input_ntuples_directory, extracted_friend_paths, args.events_per_job, args.batch_cluster, args.executable, args.walltime, args.max_jobs_per_batch, args.custom_workdir_path, args.restrict_to_channels, args.restrict_to_shifts)
     elif args.command == "collect":
         collect_outputs(args.executable, args.cores, args.custom_workdir_path)
     elif args.command == "check":
