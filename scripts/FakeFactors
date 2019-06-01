@@ -67,6 +67,12 @@ def parse_arguments():
         help=
         "Index of last event to process."
     )
+    parser.add_argument(
+        "--enable_logging",
+        action="store_true",
+        help=
+        "Enable loggging for debug purposes."
+    )
     return parser.parse_args()
 
 
@@ -103,7 +109,8 @@ def main(args):
     fractions = ff_tools.load_fractions("", "", True, "%s/src/HiggsAnalysis/friend-tree-producer/data/input_params/htt_ff_fractions_%s.root"%(cmsswbase, era), "", era)
     
     # Create friend tree
-    os.mkdir(nickname)
+    if not os.path.exists(nickname):
+        os.mkdir(nickname)
     ff_tools.apply_fake_factors(
         datafile = args.input,
         friendfilelists = { # proper input friend files according to the channel are provided by job manager. Other channels won't be used.
@@ -121,12 +128,14 @@ def main(args):
         era = era,
         pipeline_selection = args.folder,
         treename = args.tree,
-        eventrange = [args.first_entry, args.last_entry]
+        eventrange = [args.first_entry, args.last_entry],
+        rootfilemode = "recreate"
         )
 
 
 if __name__ == "__main__":
     args = parse_arguments()
-    setup_logging("FakeFactors_%s_%s_%s_%s.log"%(os.path.basename(args.input).replace(".root",""), args.folder, args.first_entry, args.last_entry),
-                  logging.WARNING)
+    if args.enable_logging:
+        setup_logging("FakeFactors_%s_%s_%s_%s.log"%(os.path.basename(args.input).replace(".root",""), args.folder, args.first_entry, args.last_entry),
+                      logging.WARNING)
     main(args)
