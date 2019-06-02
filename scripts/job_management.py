@@ -8,6 +8,7 @@ import os
 import numpy as np
 import stat
 import re
+import copy
 from multiprocessing import Pool
 
 
@@ -62,14 +63,27 @@ def check_output_files(f):
 def prepare_jobs(input_ntuples_list, inputs_base_folder, inputs_friends_folders, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch, custom_workdir_path, restrict_to_channels, restrict_to_shifts):
     ntuple_database = {}
     for f in input_ntuples_list:
+        restrict_to_channels_file = copy.deepcopy(restrict_to_channels)
         nick = f.split("/")[-1].replace(".root","")
         print "Saving inputs for %s"%nick
+        if "SingleMuon_Run" in nick or "MuTauFinalState" in nick:
+            restrict_to_channels_file = list(set(['mt']).intersection(restrict_to_channels_file)) if len(restrict_to_channels_file) > 0 else ['mt']
+            print "\tWarning: restrict %s to '%s' channel(s)"%(nick,restrict_to_channels_file)
+        if "SingleElectron_Run" in nick or "EGamma_Run" in nick or "ElTauFinalState" in nick:
+            restrict_to_channels_file = list(set(['et']).intersection(restrict_to_channels_file)) if len(restrict_to_channels_file) > 0 else ['et']
+            print "\tWarning: restrict %s to '%s' channel(s)"%(nick,restrict_to_channels_file)
+        if "Tau_Run" in nick or "TauTauFinalState" in nick:
+            restrict_to_channels_file = list(set(['tt']).intersection(restrict_to_channels_file)) if len(restrict_to_channels_file) > 0 else ['tt']
+            print "\tWarning: restrict %s to '%s' channel(s)"%(nick,restrict_to_channels_file)
+        if "MuonEG_Run" in nick or "ElMuFinalState" in nick:
+            restrict_to_channels_file = list(set(['em']).intersection(restrict_to_channels_file)) if len(restrict_to_channels_file) > 0 else ['em']
+            print "\tWarning: restrict %s to '%s' channel(s)"%(nick,restrict_to_channels_file)
         ntuple_database[nick] = {}
         ntuple_database[nick]["path"] = f
         F = r.TFile.Open(f,"read")
         pipelines = [k.GetName() for k in F.GetListOfKeys()]
-        if len(restrict_to_channels) > 0:
-            pipelines = [p for p in pipelines if p.split("_")[0] in restrict_to_channels]
+        if len(restrict_to_channels_file) > 0:
+            pipelines = [p for p in pipelines if p.split("_")[0] in restrict_to_channels_file]
         if len(restrict_to_shifts) > 0:
             pipelines = [p for p in pipelines if p.split("_")[1] in restrict_to_shifts]
         ntuple_database[nick]["pipelines"] = {}
