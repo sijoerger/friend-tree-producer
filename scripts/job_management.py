@@ -82,7 +82,7 @@ def prepare_jobs(input_ntuples_list, inputs_base_folder, inputs_friends_folders,
         ntuple_database[nick]["path"] = f
         F = r.TFile.Open(f,"read")
         pipelines = [k.GetName() for k in F.GetListOfKeys()]
-        if len(restrict_to_channels_file) > 0:
+        if len(restrict_to_channels_file) > 0 or (len(restrict_to_channels_file) == 0 and len(restrict_to_channels) > 0):
             pipelines = [p for p in pipelines if p.split("_")[0] in restrict_to_channels_file]
         if len(restrict_to_shifts) > 0:
             pipelines = [p for p in pipelines if p.split("_")[1] in restrict_to_shifts]
