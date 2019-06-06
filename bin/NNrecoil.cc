@@ -88,7 +88,8 @@ int main(int argc, char **argv) {
     for(auto quantity : met_quantities)
     {
       std::string metname = metdef+quantity;
-      inputtree->SetBranchAddress((metdef+quantity).c_str(), &(metinputs.find(metname)->second));
+      metinputs[metname] = 0.0;
+      inputtree->SetBranchAddress(metname.c_str(), &(metinputs.find(metname)->second));
     }
   }
 
@@ -131,21 +132,21 @@ int main(int argc, char **argv) {
 
     // Convert the inputs from Float_t to double
     std::map<std::string, double> model_inputs;
+    auto lep1 = ROOT::Math::Polar2DVector(pt_1, phi_1);
+    auto lep2 = ROOT::Math::Polar2DVector(pt_2, phi_2);
     for(unsigned int metindex = 0; metindex < met_definitions.size(); ++metindex)
     {
       std::string metdef = met_definitions.at(metindex);
-      auto metvec = ROOT::Math::Polar2DVector(metinputs[metdef+met_quantities.at(0)], metinputs[metdef+met_quantities.at(1)]);
+      auto recoil = - ROOT::Math::Polar2DVector(metinputs[metdef+met_quantities.at(0)], metinputs[metdef+met_quantities.at(1)]); // Recoil + Resonance = - MET
       Float_t sumet = metinputs[metdef+met_quantities.at(2)];
       // Subtract di-tau leptons in case of charged met definitions from PV
       if(metindex != 4) // No substraction for PU met
       {
         sumet -= pt_1 + pt_2;
-        auto lep1 = ROOT::Math::Polar2DVector(pt_1, phi_1);
-        auto lep2 = ROOT::Math::Polar2DVector(pt_2, phi_2);
-        metvec -= lep1 + lep2;
+        recoil -= lep1 + lep2; // subtracting Resonance = di-Tau pair
       }
-      model_inputs[metdef+"metpx"] = metvec.X();
-      model_inputs[metdef+"metpy"] = metvec.Y();
+      model_inputs[metdef+"metpx"] = recoil.X();
+      model_inputs[metdef+"metpy"] = recoil.Y();
       model_inputs[metdef+met_quantities.at(2)] = sumet;
     }
     model_inputs["npv"] = npv;
