@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
   }
 
   // NPV
-  ULong64_t npv;
+  Int_t npv;
   inputtree->SetBranchAddress("npv", &npv);
 
   // Lepton inputs
@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
   for(size_t n=0; n < nnconfig.outputs.size(); n++)
   {
     outputs[nnconfig.outputs.at(n)] = 0.0;
-    nnfriend->Branch((channel+"_"+nnconfig.outputs.at(n)).c_str(), &(outputs.find(nnconfig.outputs.at(n))->second), (channel+"_"+nnconfig.outputs.at(n)+"/F").c_str());
+    nnfriend->Branch(nnconfig.outputs.at(n).c_str(), &(outputs.find(nnconfig.outputs.at(n))->second), (nnconfig.outputs.at(n)+"/F").c_str());
   }
   // TODO: add additional branches NNrecoil_pt, NNrecoil_phi, nnmetpt, nnmetphi
 
@@ -137,7 +137,7 @@ int main(int argc, char **argv) {
       auto metvec = ROOT::Math::Polar2DVector(metinputs[metdef+met_quantities.at(0)], metinputs[metdef+met_quantities.at(1)]);
       Float_t sumet = metinputs[metdef+met_quantities.at(2)];
       // Subtract di-tau leptons in case of charged met definitions from PV
-      if(metindex != 4)
+      if(metindex != 4) // No substraction for PU met
       {
         sumet -= pt_1 + pt_2;
         auto lep1 = ROOT::Math::Polar2DVector(pt_1, phi_1);
