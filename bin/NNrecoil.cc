@@ -144,6 +144,8 @@ int main(int argc, char **argv) {
     std::map<std::string, double> model_inputs;
     auto lep1 = ROOT::Math::Polar2DVector(pt_1, phi_1);
     auto lep2 = ROOT::Math::Polar2DVector(pt_2, phi_2);
+    auto lepcharged1 = ROOT::Math::Polar2DVector(ptcharged_1, phicharged_1);
+    auto lepcharged2 = ROOT::Math::Polar2DVector(ptcharged_2, phicharged_2);
     for(unsigned int metindex = 0; metindex < met_definitions.size(); ++metindex)
     {
       std::string metdef = met_definitions.at(metindex);
@@ -152,8 +154,16 @@ int main(int argc, char **argv) {
       // Subtract di-tau leptons in case of charged met definitions from PV
       if(metindex != 4) // No substraction for PU met
       {
-        sumet -= pt_1 + pt_2;
-        recoil -= lep1 + lep2; // subtracting Resonance = di-Tau pair
+        if(metindex != 1) // Subtract only charged part in case of trackMet
+        {
+          sumet -= pt_1 + pt_2;
+          recoil -= lep1 + lep2; // subtracting Resonance = di-Tau pair
+        }
+        else
+        {
+          sumet -= ptcharged_1 + ptcharged_2;
+          recoil -= lepcharged1 + lepcharged2; // subtracting charged part of Resonance = di-Tau pair
+        }
       }
       model_inputs[metdef+"metpx"] = recoil.X();
       model_inputs[metdef+"metpy"] = recoil.Y();
