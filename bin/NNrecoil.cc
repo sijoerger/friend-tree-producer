@@ -99,11 +99,16 @@ int main(int argc, char **argv) {
 
   // Lepton inputs
   Float_t pt_1, pt_2, phi_1, phi_2;
+  Float_t ptcharged_1, ptcharged_2, phicharged_1, phicharged_2;
   inputtree->SetBranchAddress("npv", &npv);
   inputtree->SetBranchAddress("pt_1", &pt_1);
   inputtree->SetBranchAddress("pt_2", &pt_2);
   inputtree->SetBranchAddress("phi_1", &phi_1);
   inputtree->SetBranchAddress("phi_2", &phi_2);
+  inputtree->SetBranchAddress("ptcharged_1", &ptcharged_1);
+  inputtree->SetBranchAddress("ptcharged_2", &ptcharged_2);
+  inputtree->SetBranchAddress("phicharged_1", &phicharged_1);
+  inputtree->SetBranchAddress("phicharged_2", &phicharged_2);
 
   // Initialize output file
   auto outputname =
@@ -124,6 +129,11 @@ int main(int argc, char **argv) {
     nnfriend->Branch(nnconfig.outputs.at(n).c_str(), &(outputs.find(nnconfig.outputs.at(n))->second), (nnconfig.outputs.at(n)+"/F").c_str());
   }
   // TODO: add additional branches NNrecoil_pt, NNrecoil_phi, nnmetpt, nnmetphi
+  Float_t NNrecoil_pt, NNrecoil_phi, nnmet, nnmetphi;
+  nnfriend->Branch("NNrecoil_pt", &NNrecoil_pt, "NNrecoil_pt/F");
+  nnfriend->Branch("NNrecoil_phi", &NNrecoil_phi, "NNrecoil_phi/F");
+  nnfriend->Branch("nnmet", &nnmet, "nnmet/F");
+  nnfriend->Branch("nnmetphi", &nnmetphi, "nnmetphi/F");
 
   // Loop over desired events of the input tree & compute outputs
   for (unsigned int i = first_entry; i <= last_entry; i++) {
@@ -160,6 +170,13 @@ int main(int argc, char **argv) {
       auto output_value = model_outputs[nnconfig.outputs.at(index)];
       outputs[nnconfig.outputs.at(index)] = output_value;
     }
+    // Fill additional outputs
+    auto nnrecoil = ROOT::Math::XYVector(model_outputs[nnconfig.outputs.at(0)], model_outputs[nnconfig.outputs.at(1)]);
+    NNrecoil_pt = nnrecoil.R();
+    NNrecoil_phi = nnrecoil.Phi();
+    auto nnmetvec = - (nnrecoil + lep1 + lep2);
+    nnmet = nnmetvec.R();
+    nnmetphi = nnmetvec.Phi();
 
     // Fill output tree
     nnfriend->Fill();
