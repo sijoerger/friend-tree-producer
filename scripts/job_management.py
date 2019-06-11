@@ -278,7 +278,7 @@ def extract_friend_paths(packed_paths):
 
 def main():
     parser = argparse.ArgumentParser(description='Script to manage condor batch system jobs for the executables and their outputs.')
-    parser.add_argument('--executable',required=True, choices=['SVFit', 'MELA', 'NNScore', 'NNMass', 'FakeFactors'], help='Executable to be used for friend tree creation ob the batch system.')
+    parser.add_argument('--executable',required=True, choices=['SVFit', 'MELA', 'NNScore', 'NNMass', 'NNrecoil', 'FakeFactors'], help='Executable to be used for friend tree creation ob the batch system.')
     parser.add_argument('--batch_cluster',required=True, choices=['naf','etp', 'lxplus'], help='Batch system cluster to be used.')
     parser.add_argument('--command',required=True, choices=['submit','collect','check'], help='Command to be done by the job manager.')
     parser.add_argument('--input_ntuples_directory',required=True, help='Directory where the input files can be found. The file structure in the directory should match */*.root wildcard.')

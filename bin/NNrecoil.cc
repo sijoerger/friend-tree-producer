@@ -14,6 +14,8 @@
 #include "Math/Vector2Dfwd.h"
 #include "Math/Vector2D.h"
 
+#include <math.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -110,6 +112,13 @@ int main(int argc, char **argv) {
   inputtree->SetBranchAddress("phicharged_1", &phicharged_1);
   inputtree->SetBranchAddress("phicharged_2", &phicharged_2);
 
+  // Jet inputs
+  Float_t jpt_1, jpt_2, jphi_1, jphi_2;
+  inputtree->SetBranchAddress("jpt_1", &jpt_1);
+  inputtree->SetBranchAddress("jpt_2", &jpt_2);
+  inputtree->SetBranchAddress("jphi_1", &jphi_1);
+  inputtree->SetBranchAddress("jphi_2", &jphi_2);
+
   // Initialize output file
   auto outputname =
       outputname_from_settings(input, folder, first_entry, last_entry);
@@ -128,24 +137,37 @@ int main(int argc, char **argv) {
     outputs[nnconfig.outputs.at(n)] = 0.0;
     nnfriend->Branch(nnconfig.outputs.at(n).c_str(), &(outputs.find(nnconfig.outputs.at(n))->second), (nnconfig.outputs.at(n)+"/F").c_str());
   }
-  // TODO: add additional branches NNrecoil_pt, NNrecoil_phi, nnmetpt, nnmetphi
+
   Float_t NNrecoil_pt, NNrecoil_phi, nnmet, nnmetphi;
+  Float_t mt_1_nn, mt_2_nn, mt_tot_nn, pt_tt_nn, pt_ttjj_nn, pZetaNNMissVis;
+
   nnfriend->Branch("NNrecoil_pt", &NNrecoil_pt, "NNrecoil_pt/F");
   nnfriend->Branch("NNrecoil_phi", &NNrecoil_phi, "NNrecoil_phi/F");
   nnfriend->Branch("nnmet", &nnmet, "nnmet/F");
   nnfriend->Branch("nnmetphi", &nnmetphi, "nnmetphi/F");
+  nnfriend->Branch("mt_1_nn", &mt_1_nn, "mt_1_nn/F");
+  nnfriend->Branch("mt_2_nn", &mt_2_nn, "mt_2_nn/F");
+  nnfriend->Branch("mt_tot_nn", &mt_tot_nn, "mt_tot_nn/F");
+  nnfriend->Branch("pt_tt_nn", &pt_tt_nn, "pt_tt_nn/F");
+  nnfriend->Branch("pt_ttjj_nn", &pt_ttjj_nn, "pt_ttjj_nn/F");
+  nnfriend->Branch("pZetaNNMissVis", &pZetaNNMissVis, "pZetaNNMissVis/F");
 
   // Loop over desired events of the input tree & compute outputs
   for (unsigned int i = first_entry; i <= last_entry; i++) {
     // Get entry
     inputtree->GetEntry(i);
 
-    // Convert the inputs from Float_t to double
     std::map<std::string, double> model_inputs;
     auto lep1 = ROOT::Math::Polar2DVector(pt_1, phi_1);
     auto lep2 = ROOT::Math::Polar2DVector(pt_2, phi_2);
+    auto boson = lep1 + lep2;
     auto lepcharged1 = ROOT::Math::Polar2DVector(ptcharged_1, phicharged_1);
     auto lepcharged2 = ROOT::Math::Polar2DVector(ptcharged_2, phicharged_2);
+
+    auto jet1 = ROOT::Math::Polar2DVector(jpt_1, jphi_1);
+    auto jet2 = ROOT::Math::Polar2DVector(jpt_2, jphi_2);
+    auto dijet = jet1 + jet2;
+
     for(unsigned int metindex = 0; metindex < met_definitions.size(); ++metindex)
     {
       std::string metdef = met_definitions.at(metindex);
@@ -187,6 +209,19 @@ int main(int argc, char **argv) {
     auto nnmetvec = - (nnrecoil + lep1 + lep2);
     nnmet = nnmetvec.R();
     nnmetphi = nnmetvec.Phi();
+    auto mt_1_squared = 2 * lep1.R() * nnmetvec.R() * (1 - cos( lep1.Phi() - nnmetvec.Phi()) );
+    auto mt_2_squared = 2 * lep2.R() * nnmetvec.R() * (1 - cos( lep2.Phi() - nnmetvec.Phi()) );
+    auto mt_lep_squared = 2 * lep1.R() * lep2.R() * (1 - cos( lep1.Phi() - lep2.Phi()) );
+    mt_1_nn = sqrt(mt_1_squared);
+    mt_2_nn = sqrt(mt_2_squared);
+    mt_tot_nn = sqrt(mt_1_squared + mt_2_squared + mt_lep_squared);
+    pt_tt_nn = ( - nnrecoil).R();
+    pt_ttjj_nn = (dijet - nnrecoil).R();
+
+    auto zeta = (lep1.Unit() + lep2.Unit()).Unit();
+    auto pzeta_vis = boson.Dot(zeta);
+    auto pzeta_miss = nnmetvec.Dot(zeta);
+    pZetaNNMissVis = pzeta_miss - 0.85 * pzeta_vis;
 
     // Fill output tree
     nnfriend->Fill();
