@@ -110,6 +110,21 @@ int main(int argc, char** argv)
   inputtree->SetBranchAddress("metcov11",&metcov11);
   inputtree->SetBranchAddress("metphi",&metphi);
 
+  // Quantities of puppi MET
+  inputtree->SetBranchStatus("puppimet",1);
+  inputtree->SetBranchStatus("puppimetcov00",1);
+  inputtree->SetBranchStatus("puppimetcov01",1);
+  inputtree->SetBranchStatus("puppimetcov10",1);
+  inputtree->SetBranchStatus("puppimetcov11",1);
+  inputtree->SetBranchStatus("puppimetphi",1);
+  Float_t puppimet,puppimetcov00,puppimetcov01,puppimetcov10,puppimetcov11,puppimetphi;
+  inputtree->SetBranchAddress("puppimet",&puppimet);
+  inputtree->SetBranchAddress("puppimetcov00",&puppimetcov00);
+  inputtree->SetBranchAddress("puppimetcov01",&puppimetcov01);
+  inputtree->SetBranchAddress("puppimetcov10",&puppimetcov10);
+  inputtree->SetBranchAddress("puppimetcov11",&puppimetcov11);
+  inputtree->SetBranchAddress("puppimetphi",&puppimetphi);
+
   // Initialize output file
   std::string outputname = outputname_from_settings(input,folder,first_entry,last_entry);
   boost::filesystem::create_directories(filename_from_inputpath(input));
@@ -122,17 +137,27 @@ int main(int argc, char** argv)
 
   // ClassicSVFit outputs
   Float_t pt_sv,eta_sv,phi_sv,m_sv;
+  Float_t pt_sv_puppi,eta_sv_puppi,phi_sv_puppi,m_sv_puppi;
   svfitfriend->Branch("pt_sv",&pt_sv,"pt_sv/F");
   svfitfriend->Branch("eta_sv",&eta_sv,"eta_sv/F");
   svfitfriend->Branch("phi_sv",&phi_sv,"phi_sv/F");
   svfitfriend->Branch("m_sv",&m_sv,"m_sv/F");
+  svfitfriend->Branch("pt_sv_puppi",&pt_sv_puppi,"pt_sv_puppi/F");
+  svfitfriend->Branch("eta_sv_puppi",&eta_sv_puppi,"eta_sv_puppi/F");
+  svfitfriend->Branch("phi_sv_puppi",&phi_sv_puppi,"phi_sv_puppi/F");
+  svfitfriend->Branch("m_sv_puppi",&m_sv_puppi,"m_sv_puppi/F");
 
   // FastMTT outputs
   Float_t pt_fastmtt,eta_fastmtt,phi_fastmtt,m_fastmtt;
+  Float_t pt_fastmtt_puppi,eta_fastmtt_puppi,phi_fastmtt_puppi,m_fastmtt_puppi;
   svfitfriend->Branch("pt_fastmtt",&pt_fastmtt,"pt_fastmtt/F");
   svfitfriend->Branch("eta_fastmtt",&eta_fastmtt,"eta_fastmtt/F");
   svfitfriend->Branch("phi_fastmtt",&phi_fastmtt,"phi_fastmtt/F");
   svfitfriend->Branch("m_fastmtt",&m_fastmtt,"m_fastmtt/F");
+  svfitfriend->Branch("pt_fastmtt_puppi",&pt_fastmtt_puppi,"pt_fastmtt_puppi/F");
+  svfitfriend->Branch("eta_fastmtt_puppi",&eta_fastmtt_puppi,"eta_fastmtt_puppi/F");
+  svfitfriend->Branch("phi_fastmtt_puppi",&phi_fastmtt_puppi,"phi_fastmtt_puppi/F");
+  svfitfriend->Branch("m_fastmtt_puppi",&m_fastmtt_puppi,"m_fastmtt_puppi/F");
 
   // Initialize SVFit settings
   float kappa_parameter = folder_to_kappa_parameter(folder); // fully-leptonic: 3.0, semi-leptonic: 4.0; fully-hadronic: 5.0
@@ -160,6 +185,17 @@ int main(int argc, char** argv)
         covMET[1][0] = metcov10;
         covMET[0][1] = metcov01;
         covMET[1][1] = metcov11;
+
+        // define puppi MET;
+        TVector2 puppimetVec;
+        puppimetVec.SetMagPhi(puppimet,puppimetphi);
+
+        // define puppi MET covariance
+        TMatrixD puppicovMET(2, 2);
+        puppicovMET[0][0] = puppimetcov00;
+        puppicovMET[1][0] = puppimetcov10;
+        puppicovMET[0][1] = puppimetcov01;
+        puppicovMET[1][1] = puppimetcov11;
 
         // determine the right mass convention for the TauLepton decay products
         Float_t mass_1, mass_2;
@@ -206,6 +242,29 @@ int main(int argc, char** argv)
         phi_fastmtt = ttP4.Phi();
         m_fastmtt = ttP4.M();
 
+        // Run ClassicSVFit with puppi
+        svFitAlgo.integrate(measuredTauLeptons, puppimetVec.X(), puppimetVec.Y(), puppicovMET);
+        isValidSolution = svFitAlgo.isValidSolution();
+
+        if ( isValidSolution ) {
+            pt_sv_puppi = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getPt();
+            eta_sv_puppi = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getEta();
+            phi_sv_puppi = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getPhi();
+            m_sv_puppi = static_cast<DiTauSystemHistogramAdapter*>(svFitAlgo.getHistogramAdapter())->getMass();
+        } else {
+            pt_sv_puppi = default_float;
+            eta_sv_puppi = default_float;
+            phi_sv_puppi = default_float;
+            m_sv_puppi = default_float;
+        }
+
+        // Run FastMTT with puppi
+        aFastMTTAlgo.run(measuredTauLeptons,  puppimetVec.X(), puppimetVec.Y(), puppicovMET);
+        LorentzVector puppittP4 = aFastMTTAlgo.getBestP4();
+        pt_fastmtt_puppi = puppittP4.Pt();
+        eta_fastmtt_puppi = puppittP4.Eta();
+        phi_fastmtt_puppi = puppittP4.Phi();
+        m_fastmtt_puppi = puppittP4.M();
         // Fill output tree
         svfitfriend->Fill();
   }

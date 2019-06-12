@@ -55,9 +55,15 @@ def check_output_files(f):
         print "File not there:",f
     else:
         F = r.TFile.Open(f, "read")
-        valid_file = not F.IsZombie() and not F.TestBit(r.TFile.kRecovered)
-        if not valid_file: print "File is corrupt: ",f
-        F.Close()
+        if F:
+            valid_file = not F.IsZombie() and not F.TestBit(r.TFile.kRecovered)
+            F.Close()
+        else:
+            F.Close()
+            valid_file = False
+        if not valid_file:
+            print "File is corrupt: ",f
+            os.remove(f)
     return valid_file
 
 def prepare_jobs(input_ntuples_list, inputs_base_folder, inputs_friends_folders, events_per_job, batch_cluster, executable, walltime, max_jobs_per_batch, custom_workdir_path, restrict_to_channels, restrict_to_shifts):
