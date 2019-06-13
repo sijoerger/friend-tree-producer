@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
   // Lepton inputs
   Float_t pt_1, pt_2, phi_1, phi_2;
   Float_t ptcharged_1, ptcharged_2, phicharged_1, phicharged_2;
-  Float_t njets;
+  Int_t njets;
   inputtree->SetBranchAddress("njets", &njets);
   inputtree->SetBranchAddress("npv", &npv);
   inputtree->SetBranchAddress("pt_1", &pt_1);
