@@ -102,6 +102,8 @@ int main(int argc, char **argv) {
   // Lepton inputs
   Float_t pt_1, pt_2, phi_1, phi_2;
   Float_t ptcharged_1, ptcharged_2, phicharged_1, phicharged_2;
+  Float_t njets;
+  inputtree->SetBranchAddress("njets", &njets);
   inputtree->SetBranchAddress("npv", &npv);
   inputtree->SetBranchAddress("pt_1", &pt_1);
   inputtree->SetBranchAddress("pt_2", &pt_2);
@@ -139,7 +141,7 @@ int main(int argc, char **argv) {
   }
 
   Float_t NNrecoil_pt, NNrecoil_phi, nnmet, nnmetphi;
-  Float_t mt_1_nn, mt_2_nn, mt_tot_nn, pt_tt_nn, pt_ttjj_nn, pZetaNNMissVis;
+  Float_t mt_1_nn, mt_2_nn, mt_tot_nn, pt_tt_nn, pt_ttjj_nn, pZetaNNMissVis, mTdileptonMET_nn;
 
   nnfriend->Branch("NNrecoil_pt", &NNrecoil_pt, "NNrecoil_pt/F");
   nnfriend->Branch("NNrecoil_phi", &NNrecoil_phi, "NNrecoil_phi/F");
@@ -151,6 +153,7 @@ int main(int argc, char **argv) {
   nnfriend->Branch("pt_tt_nn", &pt_tt_nn, "pt_tt_nn/F");
   nnfriend->Branch("pt_ttjj_nn", &pt_ttjj_nn, "pt_ttjj_nn/F");
   nnfriend->Branch("pZetaNNMissVis", &pZetaNNMissVis, "pZetaNNMissVis/F");
+  nnfriend->Branch("mTdileptonMET_nn", &mTdileptonMET_nn, "mTdileptonMET_nn/F");
 
   // Loop over desired events of the input tree & compute outputs
   for (unsigned int i = first_entry; i <= last_entry; i++) {
@@ -216,12 +219,13 @@ int main(int argc, char **argv) {
     mt_2_nn = sqrt(mt_2_squared);
     mt_tot_nn = sqrt(mt_1_squared + mt_2_squared + mt_lep_squared);
     pt_tt_nn = ( - nnrecoil).R();
-    pt_ttjj_nn = (dijet - nnrecoil).R();
+    pt_ttjj_nn = (njets >= 2) ? (dijet - nnrecoil).R() : default_float;
 
     auto zeta = (lep1.Unit() + lep2.Unit()).Unit();
     auto pzeta_vis = boson.Dot(zeta);
     auto pzeta_miss = nnmetvec.Dot(zeta);
     pZetaNNMissVis = pzeta_miss - 0.85 * pzeta_vis;
+    mTdileptonMET_nn = sqrt(2* boson.R() * nnmetvec.R() * (1 - cos( boson.Phi() - nnmetvec.Phi()) ) );
 
     // Fill output tree
     nnfriend->Fill();
