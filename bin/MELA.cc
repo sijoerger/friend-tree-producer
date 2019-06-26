@@ -209,7 +209,7 @@ int main(int argc, char **argv) {
     // Compute discriminator for ggH
     if ((ME_ggh + ME_z2j_1 + ME_z2j_2) != 0.0)
     {
-        ME_Z_vs_ggh = ME_vbf / (ME_vbf + ME_z2j_1 + ME_z2j_2);
+        ME_Z_vs_ggh = ME_ggh / (ME_ggh + ME_z2j_1 + ME_z2j_2);
     }
     else
     {
