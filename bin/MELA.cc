@@ -110,9 +110,10 @@ int main(int argc, char **argv) {
   melafriend->Branch("ME_phi1", &ME_phi1, "ME_phi1/F");
 
  // 4. Main BG vs. Higgs discriminators
-  float ME_Z_vs_vbf, ME_Z_vs_ggh;
-  melafriend->Branch("ME_Z_vs_vbf", &ME_Z_vs_vbf, "ME_Z_vs_vbf/F");
-  melafriend->Branch("ME_Z_vs_ggh", &ME_Z_vs_ggh, "ME_Z_vs_ggh/F");
+  float ME_vbf_vs_Z, ME_ggh_vs_Z, ME_vbf_vs_ggh;
+  melafriend->Branch("ME_vbf_vs_Z", &ME_vbf_vs_Z, "ME_vbf_vs_Z/F");
+  melafriend->Branch("ME_ggh_vs_Z", &ME_ggh_vs_Z, "ME_ggh_vs_Z/F");
+  melafriend->Branch("ME_vbf_vs_ggh", &ME_vbf_vs_ggh, "ME_vbf_vs_ggh/F");
 
   // Set up MELA
   const int erg_tev = 13;
@@ -137,8 +138,8 @@ int main(int argc, char **argv) {
       ME_phi1 = default_float;
       ME_z2j_1 = default_float;
       ME_z2j_2 = default_float;
-      ME_Z_vs_vbf = default_float;
-      ME_Z_vs_ggh = default_float;
+      ME_vbf_vs_Z = default_float;
+      ME_ggh_vs_Z = default_float;
 
       melafriend->Fill();
       continue;
@@ -195,26 +196,38 @@ int main(int argc, char **argv) {
     mela.setInputEvent(&daughters, &associated2, (SimpleParticleCollection_t *)0, false);
     mela.computeProdP(ME_z2j_2, false);
 
-    // Compute discriminator for VBF
+    // Compute discriminator for VBF vs Z
     if ((ME_vbf + ME_z2j_1 + ME_z2j_2) != 0.0)
     {
-        ME_Z_vs_vbf = ME_vbf / (ME_vbf + ME_z2j_1 + ME_z2j_2);
+        ME_vbf_vs_Z = ME_vbf / (ME_vbf + ME_z2j_1 + ME_z2j_2);
     }
     else
     {
-        std::cout << "WARNING: ME_Z_vs_vbf = X / 0. Setting it to default " << default_float << std::endl;
-        ME_Z_vs_vbf = default_float;
+        std::cout << "WARNING: ME_vbf_vs_Z = X / 0. Setting it to default " << default_float << std::endl;
+        ME_vbf_vs_Z = default_float;
     }
 
-    // Compute discriminator for ggH
+    // Compute discriminator for ggH vs Z
     if ((ME_ggh + ME_z2j_1 + ME_z2j_2) != 0.0)
     {
-        ME_Z_vs_ggh = ME_ggh / (ME_ggh + ME_z2j_1 + ME_z2j_2);
+        ME_ggh_vs_Z = ME_ggh / (ME_ggh + ME_z2j_1 + ME_z2j_2);
     }
     else
     {
-        std::cout << "WARNING: ME_Z_vs_ggh = X / 0. Setting it to default " << default_float << std::endl;
-        ME_Z_vs_ggh = default_float;
+        std::cout << "WARNING: ME_ggh_vs_Z = X / 0. Setting it to default " << default_float << std::endl;
+        ME_ggh_vs_Z = default_float;
+    }
+
+
+    // Compute discriminator for VBF vs ggH
+    if ((ME_vbf + ME_ggh) != 0.0)
+    {
+        ME_vbf_vs_ggh = ME_vbf / (ME_vbf + ME_ggh);
+    }
+    else
+    {
+        std::cout << "WARNING: ME_vbf_vs_ggh = X / 0. Setting it to default " << default_float << std::endl;
+        ME_vbf_vs_ggh = default_float;
     }
 
     // Fill output tree

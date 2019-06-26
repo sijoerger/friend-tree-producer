@@ -29,7 +29,7 @@ git clone https://github.com/SVfit/ClassicSVfit TauAnalysis/ClassicSVfit -b fast
 git clone https://github.com/SVfit/SVfitTF TauAnalysis/SVfitTF
 
 # MELA
-git clone https://github.com/cms-analysis/HiggsAnalysis-ZZMatrixElement ZZMatrixElement -b v2.2.0
+git clone https://github.com/cms-analysis/HiggsAnalysis-ZZMatrixElement ZZMatrixElement -b v2.2.1
 # NOTE: The following two lines should be needed following the wiki, but it
 # seems to work either way. However, these lines introduce a dependency on AFS.
 # Wiki: https://twiki.cern.ch/twiki/bin/view/CMS/MELAProject#Checkout_instructions
