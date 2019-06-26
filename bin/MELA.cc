@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
     // Hypothesis ggH + 2 jets
     mela.setProcess(TVar::SelfDefine_spin0, TVar::JHUGen, TVar::JJQCD);
     mela.selfDHggcoupl[0][gHIGGS_GG_2][0] = 1;
-    mela.computeProdP(ME_sm_ggH, false);
+    mela.computeProdP(ME_ggh, false);
 
     // Hypothesis: Z + 2 jets
     // Compute the Hypothesis with flipped jets and sum them up for the discriminator.
