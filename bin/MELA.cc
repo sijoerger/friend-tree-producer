@@ -89,19 +89,30 @@ int main(int argc, char **argv) {
   auto melafriend = new TTree("ntuple", "MELA friend tree");
 
   // MELA outputs
-  float ME_vbf, ME_q2v1, ME_q2v2, ME_costheta1, ME_costheta2, ME_phi, ME_costhetastar, ME_phi1;
+  // 1. Matrix element variables for different hypotheses (VBF Higgs, ggH + 2 jets, Z + 2 jets)
+  float ME_vbf, ME_ggh, ME_z2j_1, ME_z2j_2;
+  melafriend->Branch("ME_ggh", &ME_ggh, "ME_ggh/F");
   melafriend->Branch("ME_vbf", &ME_vbf, "ME_vbf/F");
+  melafriend->Branch("ME_z2j_1", &ME_z2j_1, "ME_z2j_1/F");
+  melafriend->Branch("ME_z2j_2", &ME_z2j_2, "ME_z2j_2/F");
+
+  // 2. Energy transfer (Q^2) variables
+  float ME_q2v1, ME_q2v2;
   melafriend->Branch("ME_q2v1", &ME_q2v1, "ME_q2v1/F");
   melafriend->Branch("ME_q2v2", &ME_q2v2, "ME_q2v2/F");
+
+  // 3. Angle variables
+  float ME_costheta1, ME_costheta2, ME_phi, ME_costhetastar, ME_phi1;
   melafriend->Branch("ME_costheta1", &ME_costheta1, "ME_costheta1/F");
   melafriend->Branch("ME_costheta2", &ME_costheta2, "ME_costheta2/F");
   melafriend->Branch("ME_phi", &ME_phi, "ME_phi/F");
   melafriend->Branch("ME_costhetastar", &ME_costhetastar, "ME_costhetastar/F");
   melafriend->Branch("ME_phi1", &ME_phi1, "ME_phi1/F");
-  float ME_z2j_1, ME_z2j_2, ME_D;
-  melafriend->Branch("ME_z2j_1", &ME_z2j_1, "ME_z2j_1/F");
-  melafriend->Branch("ME_z2j_2", &ME_z2j_2, "ME_z2j_2/F");
-  melafriend->Branch("ME_D", &ME_D, "ME_D/F");
+
+ // 4. Main BG vs. Higgs discriminators
+  float ME_Z_vs_vbf, ME_Z_vs_ggh;
+  melafriend->Branch("ME_Z_vs_vbf", &ME_Z_vs_vbf, "ME_Z_vs_vbf/F");
+  melafriend->Branch("ME_Z_vs_ggh", &ME_Z_vs_ggh, "ME_Z_vs_ggh/F");
 
   // Set up MELA
   const int erg_tev = 13;
@@ -126,7 +137,8 @@ int main(int argc, char **argv) {
       ME_phi1 = default_float;
       ME_z2j_1 = default_float;
       ME_z2j_2 = default_float;
-      ME_D = default_float;
+      ME_Z_vs_vbf = default_float;
+      ME_Z_vs_ggh = default_float;
 
       melafriend->Fill();
       continue;
@@ -164,10 +176,15 @@ int main(int argc, char **argv) {
     mela.setCandidateDecayMode(TVar::CandidateDecay_ff);
     mela.setInputEvent(&daughters, &associated, (SimpleParticleCollection_t *)0, false);
 
-    // Hypothesis: SM Higgs
+    // Hypothesis: SM VBF Higgs
     mela.setProcess(TVar::HSMHiggs, TVar::JHUGen, TVar::JJVBF);
     mela.computeProdP(ME_vbf, false);
     mela.computeVBFAngles(ME_q2v1, ME_q2v2, ME_costheta1, ME_costheta2, ME_phi, ME_costhetastar, ME_phi1);
+
+    // Hypothesis ggH + 2 jets
+    mela.setProcess(TVar::SelfDefine_spin0, TVar::JHUGen, TVar::JJQCD);
+    mela.selfDHggcoupl[0][gHIGGS_GG_2][0] = 1;
+    mela.computeProdP(ME_sm_ggH, false);
 
     // Hypothesis: Z + 2 jets
     // Compute the Hypothesis with flipped jets and sum them up for the discriminator.
@@ -178,15 +195,26 @@ int main(int argc, char **argv) {
     mela.setInputEvent(&daughters, &associated2, (SimpleParticleCollection_t *)0, false);
     mela.computeProdP(ME_z2j_2, false);
 
-    // Compute discriminator
+    // Compute discriminator for VBF
     if ((ME_vbf + ME_z2j_1 + ME_z2j_2) != 0.0)
     {
-        ME_D = ME_vbf / (ME_vbf + ME_z2j_1 + ME_z2j_2);
+        ME_Z_vs_vbf = ME_vbf / (ME_vbf + ME_z2j_1 + ME_z2j_2);
     }
     else
     {
-        std::cout << "WARNING: ME_D = X / 0. Setting it to default " << default_float << std::endl;
-        ME_D = default_float;
+        std::cout << "WARNING: ME_Z_vs_vbf = X / 0. Setting it to default " << default_float << std::endl;
+        ME_Z_vs_vbf = default_float;
+    }
+
+    // Compute discriminator for ggH
+    if ((ME_ggh + ME_z2j_1 + ME_z2j_2) != 0.0)
+    {
+        ME_Z_vs_ggh = ME_vbf / (ME_vbf + ME_z2j_1 + ME_z2j_2);
+    }
+    else
+    {
+        std::cout << "WARNING: ME_Z_vs_ggh = X / 0. Setting it to default " << default_float << std::endl;
+        ME_Z_vs_ggh = default_float;
     }
 
     // Fill output tree
