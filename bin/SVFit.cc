@@ -47,8 +47,8 @@ int main(int argc, char** argv)
   std::string output_dir = "";
   std::string folder = "mt_nominal";
   std::string tree = "ntuple";
-  unsigned int first_entry = 0;
-  unsigned int last_entry = 9;
+  int first_entry = 0;
+  int last_entry = -1;
   po::variables_map vm;
   po::options_description config("configuration");
   config.add_options()
@@ -56,8 +56,8 @@ int main(int argc, char** argv)
     ("output_dir", po::value<std::string>(&output_dir)->default_value(output_dir))
     ("folder", po::value<std::string>(&folder)->default_value(folder))
     ("tree", po::value<std::string>(&tree)->default_value(tree))
-    ("first_entry", po::value<unsigned int>(&first_entry)->default_value(first_entry))
-    ("last_entry", po::value<unsigned int>(&last_entry)->default_value(last_entry));
+    ("first_entry", po::value<int>(&first_entry)->default_value(first_entry))
+    ("last_entry", po::value<int>(&last_entry)->default_value(last_entry));
   po::store(po::command_line_parser(argc, argv).options(config).run(), vm);
   po::notify(vm);
 
@@ -181,7 +181,7 @@ int main(int argc, char** argv)
   FastMTT aFastMTTAlgo;
 
   // Loop over desired events of the input tree & compute outputs
-  for(unsigned int i=first_entry; i <= last_entry; i++)
+  for(int i=first_entry; i < last_entry + include_last_ev; i++)
   {
         inputtree->GetEntry(i);
 
