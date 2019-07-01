@@ -44,6 +44,7 @@ std::pair<MeasuredTauLepton::kDecayType,MeasuredTauLepton::kDecayType> folder_to
 int main(int argc, char** argv)
 {
   std::string input = "output.root";
+  std::string output_dir = "";
   std::string folder = "mt_nominal";
   std::string tree = "ntuple";
   unsigned int first_entry = 0;
@@ -52,6 +53,7 @@ int main(int argc, char** argv)
   po::options_description config("configuration");
   config.add_options()
     ("input", po::value<std::string>(&input)->default_value(input))
+    ("output_dir", po::value<std::string>(&output_dir)->default_value(output_dir))
     ("folder", po::value<std::string>(&folder)->default_value(folder))
     ("tree", po::value<std::string>(&tree)->default_value(tree))
     ("first_entry", po::value<unsigned int>(&first_entry)->default_value(first_entry))
@@ -125,8 +127,16 @@ int main(int argc, char** argv)
   inputtree->SetBranchAddress("puppimetcov11",&puppimetcov11);
   inputtree->SetBranchAddress("puppimetphi",&puppimetphi);
 
+  // Setting events processing ranges
+  int include_last_ev = 1;
+  if (last_entry < 0 || last_entry >= inputtree->GetEntries())
+  {
+    last_entry = inputtree->GetEntries();
+    include_last_ev = 0;
+  }
+
   // Initialize output file
-  std::string outputname = outputname_from_settings(input,folder,first_entry,last_entry);
+  std::string outputname = outputname_from_settings(input, folder, first_entry, last_entry, output_dir);
   boost::filesystem::create_directories(filename_from_inputpath(input));
   TFile* out = TFile::Open(outputname.c_str(), "recreate");
   out->mkdir(folder.c_str());

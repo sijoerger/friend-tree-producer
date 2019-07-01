@@ -1,5 +1,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/regex.hpp>
+#include <boost/filesystem.hpp>
+
+namespace fs = boost::filesystem;
 
 std::string folder_to_channel(std::string foldername)
 {
@@ -17,11 +20,12 @@ std::string filename_from_inputpath(std::string input)
     return filename;
 }
 
-std::string outputname_from_settings(std::string input, std::string folder, unsigned int first_entry, unsigned int last_entry)
+std::string outputname_from_settings(std::string input, std::string folder, unsigned int first_entry, unsigned int last_entry,  fs::path output_dir="")
 {
     std::string filename = filename_from_inputpath(input);
     std::string outputname = filename + "/" + filename + "_" + folder + "_" + std::to_string(first_entry) + "_" + std::to_string(last_entry) + ".root";
-    return outputname;
+    fs::path full_path = output_dir / outputname;
+    return full_path.string();
 }
 
 const auto default_float = -10.f;
