@@ -157,7 +157,7 @@ def prepare_jobs(input_ntuples_list, inputs_base_folder, inputs_friends_folders,
             arguments_file.write("\n".join([str(arg) for arg in argument_list]))
             arguments_file.close()
         njobs = "arguments from arguments_%d.txt"%(index)
-        if batch_cluster in  ["etp", "lxplus"]:
+        if batch_cluster in  ["etp6","etp7","lxplus6","lxplus7"]:
             if walltime > 0:
                 condorjdl_content = condorjdl_template.format(TASKDIR=workdir_path,TASKNUMBER=str(index),EXECUTABLE=executable_path,NJOBS=njobs,WALLTIME=str(walltime))
             else:
@@ -284,8 +284,8 @@ def extract_friend_paths(packed_paths):
 
 def main():
     parser = argparse.ArgumentParser(description='Script to manage condor batch system jobs for the executables and their outputs.')
-    parser.add_argument('--executable',required=True, choices=['SVFit', 'MELA', 'NNScore', 'NNMass', 'NNrecoil', 'FakeFactors', 'ZPtMReweighting', help='Executable to be used for friend tree creation ob the batch system.')
-    parser.add_argument('--batch_cluster',required=True, choices=['naf','etp', 'lxplus'], help='Batch system cluster to be used.')
+    parser.add_argument('--executable',required=True, choices=['SVFit', 'MELA', 'NNScore', 'NNMass', 'NNrecoil', 'FakeFactors', 'ZPtMReweighting'], help='Executable to be used for friend tree creation ob the batch system.')
+    parser.add_argument('--batch_cluster',required=True, choices=['naf','etp6','etp7','lxplus6','lxplus7'], help='Batch system cluster to be used.')
     parser.add_argument('--command',required=True, choices=['submit','collect','check'], help='Command to be done by the job manager.')
     parser.add_argument('--input_ntuples_directory',required=True, help='Directory where the input files can be found. The file structure in the directory should match */*.root wildcard.')
     parser.add_argument('--friend_ntuples_directories', nargs='+', default=[], help='Directory where the friend files can be found. The file structure in the directory should match the one of the base ntuples. Channel dependent parts of the path can be inserted like /commonpath/{et:et_folder,mt:mt_folder,tt:tt_folder}/commonpath.')
@@ -297,10 +297,11 @@ def main():
     parser.add_argument('--custom_workdir_path',default=None, type=str, help='Absolute path to a workdir directory different from $CMSSW_BASE/src.')
     parser.add_argument('--restrict_to_channels', nargs='+', default=[], help='Produce friends only for certain channels')
     parser.add_argument('--restrict_to_shifts', nargs='+', default=[], help='Produce friends only for certain shifts')
+    parser.add_argument('--restrict_to_samples_wildcard', default="*", help='Produce friends only for samples matching the path wildcard')
 
     args = parser.parse_args()
 
-    input_ntuples_list = glob.glob(os.path.join(args.input_ntuples_directory,"*","*.root"))
+    input_ntuples_list = glob.glob(os.path.join(args.input_ntuples_directory,args.restrict_to_samples_wildcard,"*.root"))
     extracted_friend_paths = extract_friend_paths(args.friend_ntuples_directories)
     if args.extended_file_access:
         input_ntuples_list = ["/".join([args.extended_file_access,f]) for f in input_ntuples_list]

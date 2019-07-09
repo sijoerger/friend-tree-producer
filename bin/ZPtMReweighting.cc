@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
         if(genbosonmass >= maxmass) genbosonmass = maxmass - epsilon;
         if(genbosonpt >= maxpt) genbosonpt = maxpt - epsilon;
         zptmass_weight = weight_hist->GetBinContent(weight_hist->FindBin(genbosonmass, genbosonpt));
-        std::cout << "Determined weight: " << zptmass_weight << " mass: " << genbosonmass << " pt: " << genbosonpt << std::endl;
+        //std::cout << "Determined weight: " << zptmass_weight << " mass: " << genbosonmass << " pt: " << genbosonpt << std::endl;
     }
 
     // Fill output tree
