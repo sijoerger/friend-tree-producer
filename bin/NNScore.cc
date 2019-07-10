@@ -1,4 +1,5 @@
 #include "lwtnn/LightweightNeuralNetwork.hh"
+#include "lwtnn/LightweightGraph.hh"
 #include "lwtnn/parse_json.hh"
 #include <fstream>
 
@@ -77,33 +78,44 @@ int main(int argc, char **argv) {
   if (!boost::filesystem::exists(lwtnn_config)) {
       throw std::runtime_error("LWTNN config file does not exist.");
   }
-  std::map<int,lwt::LightweightNeuralNetwork*> models;
+  //std::map<int,lwt::LightweightNeuralNetwork*> models;
+  std::map<int,lwt::LightweightGraph*> models;
+
+//  std::ifstream config_file0(lwtnn_config+"/"+std::to_string(year)+"/"+channel+"/fold0_lwtnn.json");
+//  auto nnconfig0 = lwt::parse_json(config_file0);
+//  models[1] = new lwt::LightweightNeuralNetwork(nnconfig0.inputs, nnconfig0.layers, nnconfig0.outputs);
+//  std::cout << "Loading fold0 model for application on ODD events (event % 2 == 1)" << std::endl;
+//
+//  std::ifstream config_file1(lwtnn_config+"/"+std::to_string(year)+"/"+channel+"/fold1_lwtnn.json");
+//  auto nnconfig1 = lwt::parse_json(config_file1);
+//  models[0] = new lwt::LightweightNeuralNetwork(nnconfig1.inputs, nnconfig1.layers, nnconfig1.outputs);
+//  std::cout << "Loading fold1 model for application on EVEN events (event % 2 == 0)" << std::endl;
 
   std::ifstream config_file0(lwtnn_config+"/"+std::to_string(year)+"/"+channel+"/fold0_lwtnn.json");
-  auto nnconfig0 = lwt::parse_json(config_file0);
-  models[1] = new lwt::LightweightNeuralNetwork(nnconfig0.inputs, nnconfig0.layers, nnconfig0.outputs);
+  auto nnconfig0 = lwt::parse_json_graph(config_file0);
+  models[1] = new lwt::LightweightGraph(nnconfig0, "total_softmax_0");
   std::cout << "Loading fold0 model for application on ODD events (event % 2 == 1)" << std::endl;
 
   std::ifstream config_file1(lwtnn_config+"/"+std::to_string(year)+"/"+channel+"/fold1_lwtnn.json");
-  auto nnconfig1 = lwt::parse_json(config_file1);
-  models[0] = new lwt::LightweightNeuralNetwork(nnconfig1.inputs, nnconfig1.layers, nnconfig1.outputs);
+  auto nnconfig1 = lwt::parse_json_graph(config_file1);
+  models[0] = new lwt::LightweightGraph(nnconfig1, "total_softmax_0");
   std::cout << "Loading fold1 model for application on EVEN events (event % 2 == 0)" << std::endl;
 
   // Initialize inputs
   std::map<std::string, Float_t> float_inputs;
   std::map<std::string, Int_t> int_inputs;
-  for(size_t n=0; n < nnconfig0.inputs.size(); n++)
+  for(size_t n=0; n < nnconfig0.inputs[0].variables.size(); n++)
   {
-    std::string input_type = inputtree->GetLeaf((nnconfig0.inputs.at(n).name).c_str())->GetTypeName();
+    std::string input_type = inputtree->GetLeaf((nnconfig0.inputs[0].variables.at(n).name).c_str())->GetTypeName();
     if(input_type == "Float_t")
     {
-        float_inputs[nnconfig0.inputs.at(n).name] = 0.0;
-        inputtree->SetBranchAddress((nnconfig0.inputs.at(n).name).c_str(), &(float_inputs.find(nnconfig0.inputs.at(n).name)->second));
+        float_inputs[nnconfig0.inputs[0].variables.at(n).name] = 0.0;
+        inputtree->SetBranchAddress((nnconfig0.inputs[0].variables.at(n).name).c_str(), &(float_inputs.find(nnconfig0.inputs[0].variables.at(n).name)->second));
     }
     else if(input_type == "Int_t")
     {
-        int_inputs[nnconfig0.inputs.at(n).name] = 0;
-        inputtree->SetBranchAddress((nnconfig0.inputs.at(n).name).c_str(), &(int_inputs.find(nnconfig0.inputs.at(n).name)->second));
+        int_inputs[nnconfig0.inputs[0].variables.at(n).name] = 0;
+        inputtree->SetBranchAddress((nnconfig0.inputs[0].variables.at(n).name).c_str(), &(int_inputs.find(nnconfig0.inputs[0].variables.at(n).name)->second));
     }
     else
     {
@@ -127,10 +139,10 @@ int main(int argc, char **argv) {
 
   // Initialize outputs for the tree
   std::map<std::string, Float_t> outputs;
-  for(size_t n=0; n < nnconfig0.outputs.size(); n++)
+  for(size_t n=0; n < nnconfig0.outputs["total_softmax_0"].labels.size(); n++)
   {
-    outputs[nnconfig0.outputs.at(n)] = 0.0;
-    nnfriend->Branch((channel+"_"+nnconfig0.outputs.at(n)).c_str(), &(outputs.find(nnconfig0.outputs.at(n))->second), (channel+"_"+nnconfig0.outputs.at(n)+"/F").c_str());
+    outputs[nnconfig0.outputs["total_softmax_0"].labels.at(n)] = 0.0;
+    nnfriend->Branch((channel+"_"+nnconfig0.outputs["total_softmax_0"].labels.at(n)).c_str(), &(outputs.find(nnconfig0.outputs["total_softmax_0"].labels.at(n))->second), (channel+"_"+nnconfig0.outputs["total_softmax_0"].labels.at(n)+"/F").c_str());
   }
   Float_t max_score = default_float;
   Float_t max_index = 0.0;
@@ -145,24 +157,24 @@ int main(int argc, char **argv) {
     inputtree->GetEntry(i);
 
     // Convert the inputs from Float_t to double
-    std::map<std::string, double> model_inputs;
+    std::map<std::string, std::map<std::string, double>> model_inputs;
     for(auto &in : float_inputs)
     {
-      model_inputs[in.first] = in.second;
+      model_inputs["node_0"][in.first] = in.second;
     }
     for(auto &in : int_inputs)
     {
-      model_inputs[in.first] = in.second;
+      model_inputs["node_0"][in.first] = in.second;
     }
    
     // Apply model on inputs
     auto model_outputs = models[event % 2]->compute(model_inputs);
 
     // Fill output map
-    for(size_t index=0; index < nnconfig0.outputs.size(); index++)
+    for(size_t index=0; index < nnconfig0.outputs["total_softmax_0"].labels.size(); index++)
     {
-      auto output_value = model_outputs[nnconfig0.outputs.at(index)];
-      outputs[nnconfig0.outputs.at(index)] = output_value;
+      auto output_value = model_outputs[nnconfig0.outputs["total_softmax_0"].labels.at(index)];
+      outputs[nnconfig0.outputs["total_softmax_0"].labels.at(index)] = output_value;
       if (output_value > max_score)
       {
         max_score = output_value;
